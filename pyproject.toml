@@ -1,0 +1,35 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/shelldelta"]
+
+[project]
+name = "ShellDelta"
+version = "2026.0.1"
+dependencies = [
+  "PySide6"
+]
+requires-python = ">=3.12"
+authors = [
+  {name = "shinonome-MiDUki", email = "shiinaayame3@gmail.com"}
+]
+maintainers = [
+  {name = "shinonome-MiDUki", email = "shiinaayame3@gmail.com"}
+]
+description = "Shell Delta 2026"
+readme = "README.md"
+license = "Apache-2.0"
+keywords = ["python", "shelldelta"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Programming Language :: Python"
+]
+
+[project.urls]
+Documentation = "https://github.com/shinonome-MiDUki/Shell_Arc"
+Repository = "https://github.com/shinonome-MiDUki/Shell_Arc.git"
+Changelog = "https://github.com/shinonome-MiDUki/Shell_Arc/changelog.txt"
+
+
