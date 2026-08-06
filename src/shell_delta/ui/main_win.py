@@ -57,8 +57,13 @@ class MainUserUi(QWidget):
         btn_lo = QHBoxLayout()
         prev_btn = QPushButton("Previous")
         prev_btn.clicked.connect(lambda: self.move_sequence(is_foward=False))
-        self.current_frame_label = QLabel("0")
-        self.current_frame_label.setAlignment(Qt.AlignCenter) 
+        self.current_frame_label = QLineEdit("0")
+        self.current_frame_label.setValidator(QIntValidator())
+        self.current_frame_label.setAlignment(Qt.AlignCenter)
+        self.current_frame_label.setFixedWidth(60) 
+        self.current_frame_label.editingFinished.connect(
+            lambda: self.move_sequence(is_foward=True, is_increment=False)
+        )
         next_btn = QPushButton("Next")
         next_btn.clicked.connect(lambda: self.move_sequence(is_foward=True))
         btn_lo.addWidget(prev_btn)
@@ -188,11 +193,18 @@ class MainUserUi(QWidget):
             )
         self._show_expression_panel()
 
-    def move_sequence(self, is_foward: bool):
+    def move_sequence(self, 
+                      is_foward: bool=True, 
+                      is_increment: bool=True,
+                      increment_step: int=1
+                      ):
         if gb_var.mata_filename is None:
             return
         self.inputting = False
-        self.seq_idx += 1 if is_foward else -1
+        if is_increment:
+            self.seq_idx += increment_step if is_foward else -increment_step
+        else:
+            self.seq_idx = int(self.current_frame_label.text())
         actual_img_idx = self._get_actual_img_idx()
         actual_filename = gb_var.mata_filename.replace(
             '#' * gb_var.frame_notation_len, 
@@ -310,6 +322,7 @@ class MainUserUi(QWidget):
             Qt.Key.Key_9 : 9
         }
         pressed = event.key()
+        modifier = event.modifiers()
         if pressed == Qt.Key.Key_Return:
             if not self.inputting: 
                 return
@@ -326,9 +339,15 @@ class MainUserUi(QWidget):
             self.gl_widget.change_image(new_image_path=designated_image_path)
         elif pressed in _move_seq_keys:
             if pressed == Qt.Key.Key_Right:
-                self.move_sequence(is_foward=True)
+                if (modifier & Qt.KeyboardModifier.ShiftModifier):
+                    self.move_sequence(is_foward=True, is_increment=True, increment_step=10)
+                else:
+                    self.move_sequence(is_foward=True)
             elif pressed == Qt.Key.Key_Left:
-                self.move_sequence(is_foward=False)
+                if (modifier & Qt.KeyboardModifier.ShiftModifier):
+                    self.move_sequence(is_foward=False, is_increment=True, increment_step=10)
+                else:
+                    self.move_sequence(is_foward=False)
         elif pressed in _num_keys:
             if gb_var.mata_filename is None:
                 return
