@@ -10,7 +10,9 @@ name = "ShellDelta"
 version = "2026.0.1"
 dependencies = [
   "PySide6",
-  "PyOpenGL"
+  "PyOpenGL",
+  "opencv-python",
+  "numpy"
 ]
 requires-python = ">=3.12"
 authors = [

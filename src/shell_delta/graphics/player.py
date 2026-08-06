@@ -6,6 +6,8 @@ from PySide6.QtCore import (
 )
 
 from shell_delta.ui.opengl import OpenGLImageWidget
+from shell_delta.render import time_map
+from shell_delta import gb_var
 
 class SequencePlayer(QObject):
     SIG = Signal(int)
@@ -25,17 +27,17 @@ class SequencePlayer(QObject):
         self.spf = 1 / fps
         self.seq_idx = current_idx
         self.meta_filename = meta_filename
-        self.sequence_root_dir = sequence_root_dir
-        self.frame_notation_len = frame_notation_len
-        self.frame_img_dict = frame_img_dict
+        gb_var.sequence_root_dir = sequence_root_dir
+        gb_var.frame_notation_len = frame_notation_len
+        time_map.time_map = frame_img_dict
 
     def _get_actual_img_idx(self) -> int:
-        actual_img_idx = self.frame_img_dict.get(self.seq_idx, None)
+        actual_img_idx = time_map.time_map.get(self.seq_idx, None)
         if actual_img_idx is not None:
             return actual_img_idx
         checking_idx = self.seq_idx - 1
         while actual_img_idx is None and checking_idx >= 0:
-            actual_img_idx = self.frame_img_dict.get(checking_idx, None)
+            actual_img_idx = time_map.time_map.get(checking_idx, None)
             checking_idx -= 1
         return actual_img_idx if actual_img_idx is not None else -1
 
@@ -49,10 +51,10 @@ class SequencePlayer(QObject):
         self.seq_idx += 1 if is_foward else -1
         actual_img_idx = self._get_actual_img_idx()
         actual_filename = self.meta_filename.replace(
-            '#' * self.frame_notation_len, 
-            f"{actual_img_idx:0{self.frame_notation_len}d}"
+            '#' * gb_var.frame_notation_len, 
+            f"{actual_img_idx:0{gb_var.frame_notation_len}d}"
             )
-        new_image_path = self.sequence_root_dir / actual_filename
+        new_image_path = gb_var.sequence_root_dir / actual_filename
         if not new_image_path.exists():
             new_image_path = ""
         self.gl_widget.change_image(
