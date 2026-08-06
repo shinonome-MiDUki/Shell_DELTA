@@ -16,6 +16,8 @@ class TCLEngine:
         )
 
     def get_procs(self) -> list[str]:
+        if self.expression is None:
+            return []
         self.tcl_intepreter.eval(self.expression)
         all_procs = self.tcl_intepreter.eval("info procs").split()
         system_procs = {

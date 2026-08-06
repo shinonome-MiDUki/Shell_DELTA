@@ -1,7 +1,4 @@
-import sys
 import re
-import time
-import threading
 from pathlib import Path
 
 from PySide6.QtCore import (
@@ -9,9 +6,8 @@ from PySide6.QtCore import (
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, 
     QPushButton, QLabel, QFileDialog, 
-    QLineEdit, QComboBox
+    QLineEdit, QComboBox, QDialog
 )
-from PySide6.QtOpenGLWidgets import QOpenGLWidget
 from PySide6.QtGui import QDoubleValidator, QIntValidator
 
 from shell_delta.ui.opengl import OpenGLImageWidget
@@ -95,8 +91,10 @@ class MainUserUi(QWidget):
         self.command_func_combo = QComboBox()
         command_lo.addWidget(self.command_func_combo)
         self.exec_btn = QPushButton("Run Expression")
+        self.exec_btn.clicked.connect(self.run_expression)
         command_lo.addWidget(self.exec_btn)
         self.edit_btn = QPushButton("Edit Expression")
+        self.edit_btn.clicked.connect(self.edit_expresion)
         command_lo.addWidget(self.edit_btn)
 
         command_lo.addStretch
@@ -278,17 +276,20 @@ class MainUserUi(QWidget):
         RenderDialog(fps=int(self.fps_input_field.text())).exec()
 
     def edit_expresion(self):
-        ExpressionEditor().exec()
+        expression_edit = ExpressionEditor().exec()
+        if expression_edit == QDialog.Accepted:
+            self.command_func_combo.addItems(TCLEngine().get_procs())
 
     def run_expression(self):
         func_name = self.command_func_combo.currentText()
         from_frame = int(self.run_from_input.text())
         to_frame = int(self.run_to_input.text())
         for frame in range(from_frame, to_frame+1):
-            TCLEngine().run_tcl(
+            tcl_rtn = TCLEngine().run_tcl(
                 func_name=func_name,
                 frame=frame
             )
+            time_map.time_map[frame] = int(tcl_rtn)
 
 
     def keyPressEvent(self, event):

@@ -18,6 +18,7 @@ class ExpressionEditor(QDialog):
         dialog_lo.addWidget(self.scripting_area)
 
         save_btn = QPushButton("Save")
+        save_btn.clicked.connect(self.save_expression)
         dialog_lo.addWidget(save_btn)
 
         self.setLayout(dialog_lo)
@@ -31,6 +32,7 @@ class ExpressionEditor(QDialog):
             saving_path=str(saving_path),
             writing_info={"expression" : self.scripting_area.toPlainText()}
         )
+        self.accept()
 
     def set_expression(self):
         saving_path = gb_var.saving_path
