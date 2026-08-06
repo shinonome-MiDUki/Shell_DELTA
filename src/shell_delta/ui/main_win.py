@@ -12,10 +12,11 @@ from PySide6.QtWidgets import (
     QLineEdit, QComboBox
 )
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
-from PySide6.QtGui import QDoubleValidator
+from PySide6.QtGui import QDoubleValidator, QIntValidator
 
 from shell_delta.ui.opengl import OpenGLImageWidget
 from shell_delta.ui.render_dialog import RenderDialog
+from shell_delta.ui.expression_editor import ExpressionEditor
 from shell_delta.graphics.player import SequencePlayer
 from shell_delta.render import time_map
 from shell_delta.io.io_sadpj import IO_SADPJ
@@ -97,10 +98,27 @@ class MainUserUi(QWidget):
         command_lo.addWidget(self.exec_btn)
         self.edit_btn = QPushButton("Edit Expression")
         command_lo.addWidget(self.edit_btn)
+
+        command_lo.addStretch
+        self.from_word_label = QLabel("from")
+        command_lo.addWidget(self.from_word_label)
+        self.run_from_input = QLineEdit("0")
+        self.run_from_input.setValidator(QIntValidator())
+        command_lo.addWidget(self.run_from_input)
+        self.to_word_label = QLabel("to")
+        command_lo.addWidget(self.to_word_label)
+        self.run_to_input = QLineEdit("1")
+        self.run_to_input.setValidator(QIntValidator())
+        command_lo.addWidget(self.run_to_input)
         main_lo.addLayout(command_lo)
+
         self.command_func_combo.hide()
         self.exec_btn.hide()
         self.edit_btn.hide()
+        self.from_word_label.hide()
+        self.run_from_input.hide()
+        self.to_word_label.hide()
+        self.run_to_input.hide()
 
         self.setLayout(main_lo)
 
@@ -118,6 +136,10 @@ class MainUserUi(QWidget):
         self.command_func_combo.show()
         self.exec_btn.show()
         self.edit_btn.show()
+        self.from_word_label.show()
+        self.run_from_input.show()
+        self.to_word_label.show()
+        self.run_to_input.show()
         self.command_func_combo.clear()
         self.command_func_combo.addItems(TCLEngine().get_procs())
 
@@ -254,6 +276,19 @@ class MainUserUi(QWidget):
 
     def render_sequence(self):
         RenderDialog(fps=int(self.fps_input_field.text())).exec()
+
+    def edit_expresion(self):
+        ExpressionEditor().exec()
+
+    def run_expression(self):
+        func_name = self.command_func_combo.currentText()
+        from_frame = int(self.run_from_input.text())
+        to_frame = int(self.run_to_input.text())
+        for frame in range(from_frame, to_frame+1):
+            TCLEngine().run_tcl(
+                func_name=func_name,
+                frame=frame
+            )
 
 
     def keyPressEvent(self, event):

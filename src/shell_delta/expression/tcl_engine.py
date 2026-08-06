@@ -16,6 +16,7 @@ class TCLEngine:
         )
 
     def get_procs(self) -> list[str]:
+        self.tcl_intepreter.eval(self.expression)
         all_procs = self.tcl_intepreter.eval("info procs").split()
         system_procs = {
             'unknown', 'auto_load', 'auto_load_index', 'auto_import', 
@@ -23,3 +24,19 @@ class TCLEngine:
             }
         function_procs = [p for p in all_procs if p not in system_procs]
         return function_procs
+
+    def run_tcl(self,
+                func_name: str,
+                frame: int
+                ) -> str:
+        self.tcl_intepreter.eval(self.expression)
+        arguments = {
+            "frame" : frame
+        }
+        tcl_rtn = self.tcl_intepreter.call(
+            func_name,
+            [item for pair in arguments.items() for item in pair]
+        )
+        return str(tcl_rtn)
+
+    
