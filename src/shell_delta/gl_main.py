@@ -1,16 +1,20 @@
 import sys
 import re
 import time
+import threading
 from pathlib import Path
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import (
+    Qt, QObject, QThread,
+    Signal, Slot
+)
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget,
     QVBoxLayout, QHBoxLayout, QPushButton,
     QLabel, QFileDialog, QLineEdit
-    )
+)
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
-from PySide6.QtGui import QImage
+from PySide6.QtGui import QImage, QDoubleValidator
 from PySide6.QtOpenGL import QOpenGLTexture
 from OpenGL import GL
 
@@ -53,23 +57,16 @@ class OpenGLImageWidget(QOpenGLWidget):
             self.texture.setMinificationFilter(QOpenGLTexture.Filter.Linear)
             self.texture.setMagnificationFilter(QOpenGLTexture.Filter.Linear)
 
-    def change_image(self, new_image_path):
-        st = time.time()
-        # OpenGL コンテキストをアクティブ化
+    def change_image(self, 
+                     new_image_path: str | Path,
+                     target_time: float = 0.0
+                     ) -> None:
         self.makeCurrent()
-
-        # 新しい画像を読み込み
         self._load_texture(new_image_path)
-
-        # 画像比率が変わった場合に備えて glOrtho 領域を更新
         self.resizeGL(self.width(), self.height())
-
-        # コンテキストの割り当て解除
         self.doneCurrent()
-
-        # 画面の再描画を要求 (paintGL が呼ばれる)
+        while (time.time() < target_time): ...
         self.update()
-        print(time.time() - st)
 
 
     def resizeGL(self, w, h):
@@ -122,6 +119,75 @@ class OpenGLImageWidget(QOpenGLWidget):
         self.texture.release()
 
 
+class SequencePlayer(QObject):
+    SIG = Signal(int)
+
+    def __init__(self,
+                 gl_widget: OpenGLImageWidget,
+                 fps: float,
+                 current_idx: int,
+                 meta_filename: str,
+                 sequence_root_dir: Path,
+                 frame_notation_len = int
+                 ) -> None:
+        super().__init__()
+        self.is_playing = False
+        self.gl_widget = gl_widget
+        self.spf = 1 / fps
+        self.seq_idx = current_idx
+        self.meta_filename = meta_filename
+        self.sequence_root_dir = sequence_root_dir
+        self.frame_notation_len = frame_notation_len
+
+    def _get_actual_img_idx(self) -> int:
+        actual_img_idx = self.frame_img_dict.get(self.seq_idx, None)
+        if actual_img_idx is not None:
+            return actual_img_idx
+        checking_idx = self.seq_idx - 1
+        while actual_img_idx is None and checking_idx >= 0:
+            actual_img_idx = self.frame_img_dict.get(checking_idx, None)
+            checking_idx -= 1
+        return actual_img_idx if actual_img_idx is not None else -1
+
+    def move_sequence(self, 
+                      is_foward: bool,
+                      target_time: float
+                      ):
+        if self.meta_filename is None:
+            return
+        self.inputting = False
+        self.seq_idx += 1 if is_foward else -1
+        actual_img_idx = self._get_actual_img_idx()
+        actual_filename = self.meta_filename.replace(
+            '#' * self.frame_notation_len, 
+            f"{actual_img_idx:0{self.frame_notation_len}d}"
+            )
+        new_image_path = self.sequence_root_dir / actual_filename
+        if not new_image_path.exists():
+            new_image_path = ""
+        self.gl_widget.change_image(
+            new_image_path=str(new_image_path),
+            target_time=target_time
+            )
+
+    @Slot()
+    def play_sequence(self):
+        self.is_playing = True
+        target_time = time.time()
+        while self.is_playing and self.seq_idx <= 1000:
+            target_time_time += self.spf
+            self.move_sequence(
+                is_foward=True,
+                target_time=target_time
+                )
+            self.seq_idx += 1
+        self.SIG.emit(self.seq_idx)
+
+    @Slot()
+    def stop(self):
+        self.is_playing = False
+
+
 class MainUserUi(QWidget):
     def __init__(self):
         super().__init__()
@@ -166,19 +232,23 @@ class MainUserUi(QWidget):
         main_lo.addLayout(btn_lo, 2)
 
         video_lo = QHBoxLayout()
-        play_btn = QPushButton("Play")
-        play_btn.clicked.connect()
-        video_lo.addWidget(play_btn)
-        pause_btn = QPushButton("Pause")
-        pause_btn.clicked.connect()
-        video_lo.addWidget(pause_btn)
+        self.play_btn = QPushButton("Play")
+        self.play_btn.clicked.connect(self.play_sequence)
+        video_lo.addWidget(self.play_btn)
+        self.pause_btn = QPushButton("Pause")
+        self.pause_btn.clicked.connect(self.pause_sequence)
+        video_lo.addWidget(self.pause_btn)
         render_btn = QPushButton("Render")
+        render_btn.clicked.connect(self.pause_sequence)
         video_lo.addWidget(render_btn)
         video_lo.addSpacing
         
         fps_input_lo = QHBoxLayout()
         fps_input_lo.addWidget(QLabel("FPS : "))
-        fps_input_field = QLineEdit("24")
+        self.fps_input_field = QLineEdit("24")
+        self.fps_input_field.setValidator(QDoubleValidator())
+        fps_input_lo.addWidget(self.fps_input_field)
+        video_lo.addLayout(fps_input_lo)
 
         main_lo.addLayout(video_lo, 1) 
 
@@ -253,7 +323,34 @@ class MainUserUi(QWidget):
             self.frame_img_dict[num] = num
         print(self.frame_img_dict)
 
+    def play_sequence(self):
+        self.play_btn.setEnabled(False)
+        self.pause_sequence.setEnabled(True)
 
+        self.td = QThread()
+        self.worker = SequencePlayer(
+            gl_widget=self.gl_widget,
+            fps=float(self.fps_input_field.text()),
+            current_idx=self.seq_idx
+        )
+        self.worker.moveToThread(self.td)
+        self.td.started.connect(self.worker.play_sequence)
+        self.worker.SIG.connect(self.td.quit)
+        self.worker.SIG.connect(self.worker.deleteLater)
+        self.td.finished.connect(self.td.deleteLater)
+        self.td.finished.connect(self.on_finished)
+
+        self.td.start()
+
+    def pause_sequence(self, arrived_idx):
+        if self.worker:
+            self.worker.stop()
+            self.seq_idx = arrived_idx
+            self.current_frame_label.setText(str(self.seq_idx))
+
+    def on_finished(self):
+        self.play_btn.setEnabled(True)
+        self.pause_btn.setEnabled(False)
 
 
     def keyPressEvent(self, event):
