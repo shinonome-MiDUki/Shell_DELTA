@@ -28,9 +28,4 @@ classifiers = [
   "Programming Language :: Python"
 ]
 
-[project.urls]
-Documentation = "https://github.com/shinonome-MiDUki/Shell_Arc"
-Repository = "https://github.com/shinonome-MiDUki/Shell_Arc.git"
-Changelog = "https://github.com/shinonome-MiDUki/Shell_Arc/changelog.txt"
-
 

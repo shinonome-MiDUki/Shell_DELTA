@@ -1,32 +1,19 @@
 import sys
-from PySide6.QtWidgets import (
-    QApplication, QLabel, QWidget, 
-    QVBoxLayout, QHBoxLayout, 
-)
 
-class MainWindow(QWidget):
-    def __init__(self):
-        super().__init__()
-        
-        self.setWindowTitle("MY UI")
-        self.resize(800, 800)
-    
-        layout = QVBoxLayout()
-        label = QLabel("Hello World")
-        
-        label.setStyleSheet("font-size: 16px;")
-    
-        layout.addWidget(label)
-        self.setLayout(layout)
+from PySide6.QtWidgets import QApplication, QMainWindow
 
-
-def main():
-    app = QApplication(sys.argv)
-
-    window = MainWindow()
-    window.show()
-    sys.exit(app.exec())
+from shell_delta.ui.main_win import MainUserUi
 
 
 if __name__ == "__main__":
-    main()
+    app = QApplication(sys.argv)
+    
+    window = QMainWindow()
+    window.setWindowTitle("PySide OpenGL Aspect Ratio Fixed")
+    window.resize(800, 600)
+
+    main_ui = MainUserUi()
+    window.setCentralWidget(main_ui)
+
+    window.show()
+    sys.exit(app.exec())

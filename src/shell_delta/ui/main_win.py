@@ -5,188 +5,17 @@ import threading
 from pathlib import Path
 
 from PySide6.QtCore import (
-    Qt, QObject, QThread,
-    Signal, Slot
-)
+    Qt, QThread, )
 from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QWidget,
-    QVBoxLayout, QHBoxLayout, QPushButton,
-    QLabel, QFileDialog, QLineEdit
+    QWidget, QVBoxLayout, QHBoxLayout, 
+    QPushButton, QLabel, QFileDialog, 
+    QLineEdit
 )
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
-from PySide6.QtGui import QImage, QDoubleValidator
-from PySide6.QtOpenGL import QOpenGLTexture
-from OpenGL import GL
+from PySide6.QtGui import QDoubleValidator
 
-class OpenGLImageWidget(QOpenGLWidget):
-    def __init__(self, image_path, parent=None):
-        super().__init__(parent)
-        self.image_path = image_path
-        self.texture = None
-        self.image_ratio = 1.0  # 画像の幅/高さ
-
-    def initializeGL(self):
-        GL.glClearColor(0.1, 0.1, 0.1, 1.0)
-        GL.glEnable(GL.GL_TEXTURE_2D)
-
-        # PNG 画像を読み込み
-        image = QImage(self.image_path).mirrored()
-        
-        if not image.isNull():
-            # 画像の縦横比を保存
-            self.image_ratio = image.width() / image.height()
-            
-            self.texture = QOpenGLTexture(image)
-            self.texture.setMinificationFilter(QOpenGLTexture.Filter.Linear)
-            self.texture.setMagnificationFilter(QOpenGLTexture.Filter.Linear)
-
-    def _load_texture(self, path):
-        """画像ファイルを読み込み、QOpenGLTexture を生成する内部関数"""
-        # 古いテクスチャが存在する場合は破棄してメモリ開放
-        if self.texture:
-            self.texture.destroy()
-            self.texture = None
-
-        image = QImage(path).mirrored()
-        if not image.isNull():
-            self.image_path = path
-            self.image_ratio = image.width() / image.height()
-
-            # 新しいテクスチャを作成
-            self.texture = QOpenGLTexture(image)
-            self.texture.setMinificationFilter(QOpenGLTexture.Filter.Linear)
-            self.texture.setMagnificationFilter(QOpenGLTexture.Filter.Linear)
-
-    def change_image(self, 
-                     new_image_path: str | Path,
-                     target_time: float = 0.0
-                     ) -> None:
-        self.makeCurrent()
-        self._load_texture(new_image_path)
-        self.resizeGL(self.width(), self.height())
-        self.doneCurrent()
-        while (time.time() < target_time): ...
-        self.update()
-
-
-    def resizeGL(self, w, h):
-        GL.glViewport(0, 0, w, h)
-        
-        # 投影行列を設定してアスペクト比を補正
-        GL.glMatrixMode(GL.GL_PROJECTION)
-        GL.glLoadIdentity()
-        
-        widget_ratio = w / h if h != 0 else 1.0
-
-        # ウィンドウと画像の縦横比を比較し、描画範囲 (glOrtho) を調整
-        if widget_ratio > self.image_ratio:
-            # ウィンドウの方が横長：左右に余白を作る
-            factor = widget_ratio / self.image_ratio
-            GL.glOrtho(-factor, factor, -1.0, 1.0, -1.0, 1.0)
-        else:
-            # ウィンドウの方が縦長：上下に余白を作る
-            factor = self.image_ratio / widget_ratio
-            GL.glOrtho(-1.0, 1.0, -factor, factor, -1.0, 1.0)
-
-        GL.glMatrixMode(GL.GL_MODELVIEW)
-        GL.glLoadIdentity()
-
-    def paintGL(self):
-        GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
-
-        if not self.texture:
-            return
-
-        self.texture.bind()
-
-        # -1.0 〜 1.0 の正方形の矩形を描画（resizeGL の glOrtho 側で比率を吸収）
-        GL.glBegin(GL.GL_QUADS)
-        
-        GL.glTexCoord2f(0.0, 0.0)
-        GL.glVertex2f(-1.0, -1.0)
-
-        GL.glTexCoord2f(1.0, 0.0)
-        GL.glVertex2f(1.0, -1.0)
-
-        GL.glTexCoord2f(1.0, 1.0)
-        GL.glVertex2f(1.0, 1.0)
-
-        GL.glTexCoord2f(0.0, 1.0)
-        GL.glVertex2f(-1.0, 1.0)
-
-        GL.glEnd()
-
-        self.texture.release()
-
-
-class SequencePlayer(QObject):
-    SIG = Signal(int)
-
-    def __init__(self,
-                 gl_widget: OpenGLImageWidget,
-                 fps: float,
-                 current_idx: int,
-                 meta_filename: str,
-                 sequence_root_dir: Path,
-                 frame_notation_len = int
-                 ) -> None:
-        super().__init__()
-        self.is_playing = False
-        self.gl_widget = gl_widget
-        self.spf = 1 / fps
-        self.seq_idx = current_idx
-        self.meta_filename = meta_filename
-        self.sequence_root_dir = sequence_root_dir
-        self.frame_notation_len = frame_notation_len
-
-    def _get_actual_img_idx(self) -> int:
-        actual_img_idx = self.frame_img_dict.get(self.seq_idx, None)
-        if actual_img_idx is not None:
-            return actual_img_idx
-        checking_idx = self.seq_idx - 1
-        while actual_img_idx is None and checking_idx >= 0:
-            actual_img_idx = self.frame_img_dict.get(checking_idx, None)
-            checking_idx -= 1
-        return actual_img_idx if actual_img_idx is not None else -1
-
-    def move_sequence(self, 
-                      is_foward: bool,
-                      target_time: float
-                      ):
-        if self.meta_filename is None:
-            return
-        self.inputting = False
-        self.seq_idx += 1 if is_foward else -1
-        actual_img_idx = self._get_actual_img_idx()
-        actual_filename = self.meta_filename.replace(
-            '#' * self.frame_notation_len, 
-            f"{actual_img_idx:0{self.frame_notation_len}d}"
-            )
-        new_image_path = self.sequence_root_dir / actual_filename
-        if not new_image_path.exists():
-            new_image_path = ""
-        self.gl_widget.change_image(
-            new_image_path=str(new_image_path),
-            target_time=target_time
-            )
-
-    @Slot()
-    def play_sequence(self):
-        self.is_playing = True
-        target_time = time.time()
-        while self.is_playing and self.seq_idx <= 1000:
-            target_time_time += self.spf
-            self.move_sequence(
-                is_foward=True,
-                target_time=target_time
-                )
-            self.seq_idx += 1
-        self.SIG.emit(self.seq_idx)
-
-    @Slot()
-    def stop(self):
-        self.is_playing = False
-
+from shell_delta.ui.opengl import OpenGLImageWidget
+from shell_delta.graphics.player import SequencePlayer
 
 class MainUserUi(QWidget):
     def __init__(self):
@@ -237,6 +66,7 @@ class MainUserUi(QWidget):
         video_lo.addWidget(self.play_btn)
         self.pause_btn = QPushButton("Pause")
         self.pause_btn.clicked.connect(self.pause_sequence)
+        self.pause_btn.setEnabled(False)
         video_lo.addWidget(self.pause_btn)
         render_btn = QPushButton("Render")
         render_btn.clicked.connect(self.pause_sequence)
@@ -304,34 +134,30 @@ class MainUserUi(QWidget):
         self.current_actual_img_idx_label.setText(str(self.seq_idx))
         self.current_frame_label.setText(str(self.first_sequence_idx))
 
-        print(f"mfie : {self.mata_filename}")
         parts = [re.escape(p) for p in self.mata_filename.split(sharps)]
-        print(f"parts : {parts}")
         regex_pattern = "^" + r"(\d+)".join(parts) + "$"
-        print(regex_pattern)
-        for item in self.sequence_root_dir.iterdir():
-            print(item)
-        print("**")
         numbers = [
             m.group(1)
             for item in self.sequence_root_dir.iterdir()
             if item.is_file() and (m := re.match(regex_pattern, item.name))
         ]
-        print(numbers)
         for num in numbers:
             num = int(num)
             self.frame_img_dict[num] = num
-        print(self.frame_img_dict)
 
     def play_sequence(self):
         self.play_btn.setEnabled(False)
-        self.pause_sequence.setEnabled(True)
+        self.pause_btn.setEnabled(True)
 
         self.td = QThread()
         self.worker = SequencePlayer(
             gl_widget=self.gl_widget,
             fps=float(self.fps_input_field.text()),
-            current_idx=self.seq_idx
+            current_idx=self.seq_idx,
+            meta_filename=self.mata_filename,
+            sequence_root_dir=self.sequence_root_dir,
+            frame_notation_len=self.frame_notation_len,
+            frame_img_dict=self.frame_img_dict
         )
         self.worker.moveToThread(self.td)
         self.td.started.connect(self.worker.play_sequence)
@@ -398,17 +224,3 @@ class MainUserUi(QWidget):
                 self.input_frame_num_str = ""
             self.input_frame_num_str += str(_num_keys[pressed])
             self.current_actual_img_idx_label.setText(self.input_frame_num_str)
-
-
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    
-    window = QMainWindow()
-    window.setWindowTitle("PySide OpenGL Aspect Ratio Fixed")
-    window.resize(800, 600)
-
-    main_ui = MainUserUi()
-    window.setCentralWidget(main_ui)
-
-    window.show()
-    sys.exit(app.exec())
