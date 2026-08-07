@@ -15,7 +15,7 @@ class OpenGLImageWidget(QOpenGLWidget):
         self.image_ratio = 1.0  # 画像の幅/高さ
 
     def initializeGL(self):
-        GL.glClearColor(0.1, 0.1, 0.1, 1.0)
+        GL.glClearColor(0, 0, 0, 1.0)
         GL.glEnable(GL.GL_TEXTURE_2D)
 
         # PNG 画像を読み込み

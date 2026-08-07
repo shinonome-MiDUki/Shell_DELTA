@@ -23,6 +23,75 @@ from shell_delta.io.io_sadpj import IO_SADPJ
 from shell_delta.expression.tcl_engine import TCLEngine
 from shell_delta import gb_var
 
+# --- Visual theme ---------------------------------
+_BG = "#1b1c22"
+_PANEL = "#24252c"
+_BORDER = "#3a3b45"
+_TEXT = "#e6e6ec"
+_TEXT_DIM = "#9a9ba8"
+_ACCENT = "#5b8cff"
+_ACCENT_HOVER = "#6f9bff"
+_ACCENT_PRESSED = "#4a76e0"
+_SUCCESS = "#43b581"
+
+STYLE_SHEET = f"""
+QWidget {{
+    background-color: {_BG};
+    color: {_TEXT};
+    font-family: 'Segoe UI', 'Helvetica Neue', sans-serif;
+    font-size: 13px;
+}}
+QLabel {{
+    color: {_TEXT_DIM};
+    background: transparent;
+}}
+QPushButton {{
+    background-color: {_PANEL};
+    color: {_TEXT};
+    border: 1px solid {_BORDER};
+    border-radius: 6px;
+    padding: 6px 14px;
+}}
+QPushButton:hover {{
+    background-color: #34353f;
+    border: 1px solid {_ACCENT};
+}}
+QPushButton:pressed {{
+    background-color: #202128;
+}}
+QPushButton:disabled {{
+    color: #6b6c78;
+    background-color: #202128;
+    border: 1px solid {_PANEL};
+}}
+QPushButton#primaryButton {{
+    background-color: {_ACCENT};
+    color: #ffffff;
+    border: 1px solid {_ACCENT};
+    font-weight: 600;
+}}
+QPushButton#primaryButton:hover {{
+    background-color: {_ACCENT_HOVER};
+}}
+QPushButton#primaryButton:pressed {{
+    background-color: {_ACCENT_PRESSED};
+}}
+QLineEdit, QComboBox {{
+    background-color: {_PANEL};
+    color: {_TEXT};
+    border: 1px solid {_BORDER};
+    border-radius: 6px;
+    padding: 4px 8px;
+}}
+QLineEdit:focus, QComboBox:focus {{
+    border: 1px solid {_ACCENT};
+}}
+QComboBox::drop-down {{
+    border: none;
+}}
+"""
+
+
 class MainUserUi(QWidget):
     def __init__(self):
         super().__init__()
@@ -32,6 +101,8 @@ class MainUserUi(QWidget):
         self.seq_idx = 0
 
         main_lo = QVBoxLayout()
+        main_lo.setSpacing(10)
+        main_lo.setContentsMargins(16, 16, 16, 16)
 
         io_lo = QHBoxLayout()
         read_btn = QPushButton("Read Sequence")
@@ -49,7 +120,10 @@ class MainUserUi(QWidget):
         self.current_actual_img_idx_label = QLabel("----")
         self.current_actual_img_idx_label.setFixedWidth(50)
         self.current_actual_img_idx_label.setAlignment(Qt.AlignCenter) 
-        self.current_actual_img_idx_label.setStyleSheet("border:2px solid #000000;")
+        self.current_actual_img_idx_label.setStyleSheet(
+            f"border: 1px solid {_ACCENT}; border-radius: 6px; "
+            f"background-color: {_PANEL}; color: {_TEXT}; font-weight: 600;"
+        )
         labels_lo.addWidget(self.current_actual_img_idx_label)
         self.current_opened_label = QLabel("Working Sequence : None")
         labels_lo.addWidget(self.current_opened_label)
@@ -103,6 +177,7 @@ class MainUserUi(QWidget):
 
         video_lo = QHBoxLayout()
         self.play_btn = QPushButton("Play")
+        self.play_btn.setObjectName("primaryButton")
         self.play_btn.clicked.connect(self.play_sequence)
         video_lo.addWidget(self.play_btn)
         self.pause_btn = QPushButton("Pause")
@@ -110,6 +185,7 @@ class MainUserUi(QWidget):
         self.pause_btn.setEnabled(False)
         video_lo.addWidget(self.pause_btn)
         self.render_btn = QPushButton("Render")
+        self.render_btn.setObjectName("primaryButton")
         self.render_btn.clicked.connect(self.render_sequence)
         video_lo.addWidget(self.render_btn)
         video_lo.addSpacing
@@ -158,6 +234,8 @@ class MainUserUi(QWidget):
         self.to_word_label.hide()
         self.run_to_input.hide()
 
+        self.setStyleSheet(STYLE_SHEET)
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setLayout(main_lo)
 
     def _get_actual_img_idx(self) -> int:
@@ -336,7 +414,7 @@ class MainUserUi(QWidget):
     def render_sequence(self):
         render_dialog_call = RenderDialog(fps=int(self.fps_input_field.text())).exec()
         if render_dialog_call == QDialog.Accepted:
-            self.render_btn.setStyleSheet("color : green ;")
+            self.render_btn.setStyleSheet(f"color : {_SUCCESS} ;")
             self.render_btn.setText("Rendered")
             self.render_btn.setEnabled(False)
             QTimer().singleShot(
@@ -362,7 +440,7 @@ class MainUserUi(QWidget):
                 frame=frame
             )
             time_map.time_map[frame] = int(tcl_rtn)
-        self.exec_btn.setStyleSheet("color : green ;")
+        self.exec_btn.setStyleSheet(f"color : {_SUCCESS} ;")
         self.exec_btn.setText("Executed")
         self.exec_btn.setEnabled(False)
         QTimer().singleShot(
@@ -376,7 +454,7 @@ class MainUserUi(QWidget):
                      btn: QPushButton,
                      original_text: str
                      ):
-        btn.setStyleSheet("color : black ;")
+        btn.setStyleSheet(f"color : {_TEXT} ;")
         btn.setText(original_text)
         btn.setEnabled(True)
 
