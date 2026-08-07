@@ -20,7 +20,8 @@ dependencies = [
   "PySide6",
   "PyOpenGL",
   "opencv-python",
-  "numpy"
+  "numpy",
+  "cel-expr-python"
 ]
 requires-python = ">=3.12"
 authors = [

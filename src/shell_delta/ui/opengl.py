@@ -1,4 +1,5 @@
-import time
+import gc
+import ctypes
 from pathlib import Path
 
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
@@ -15,7 +16,7 @@ class OpenGLImageWidget(QOpenGLWidget):
         self.image_path = image_path
         self.texture = None
         self.image_ratio = 1.0 
-        self.ram_img_buffer: dict[str, QOpenGLTexture] = {}
+        self.ram_img_buffer: dict[str, tuple[QOpenGLTexture, float]] = {}
 
     def initializeGL(self):
         GL.glClearColor(0, 0, 0, 1.0)
@@ -58,7 +59,9 @@ class OpenGLImageWidget(QOpenGLWidget):
         self.doneCurrent()
         self.update()
 
-    def _send_img_to_buffer(self):
+    def send_img_to_buffer(self):
+        if self.ram_img_buffer:
+            return
         img_idx_list = list(set([int(v) for _, v in time_map.time_map.items()]))
         img_file_path_list = [
             EditingUtils.get_actual_filepath(img_idx=i) 
@@ -68,15 +71,34 @@ class OpenGLImageWidget(QOpenGLWidget):
         for img_file_path in img_file_path_list:
             image = QImage(img_file_path).mirrored()
             if not image.isNull():
-                self.image_ratio = image.width() / image.height()
+                asp_ratio = image.width() / image.height()
                 texture = QOpenGLTexture(image)
                 texture.setMinificationFilter(QOpenGLTexture.Filter.Linear)
                 texture.setMagnificationFilter(QOpenGLTexture.Filter.Linear)
-            self.ram_img_buffer[img_file_path] = texture
+            self.ram_img_buffer[img_file_path] = (texture, asp_ratio)
 
 
-    def change_image_onram(self):
-        ...
+    def change_image_onram(self,
+                           next_image_path: str | Path
+                           ) -> None:
+        if not self.ram_img_buffer:
+            return
+        buf = self.ram_img_buffer[next_image_path]
+        self.texture = buf[0]
+        self.image_ratio = buf[1]
+        self.update()
+
+    def release_buffer(self):
+        if not self.ram_img_buffer:
+            return
+        self.ram_img_buffer.clear()
+        self.ram_img_buffer = {}
+        gc.collect()
+        try:
+            ctypes.CDLL("libc.so.6").malloc_trim(0)
+        except Exception:
+            pass
+
 
 
     def resizeGL(self, w, h):

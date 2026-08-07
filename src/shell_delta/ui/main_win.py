@@ -8,7 +8,8 @@ from PySide6.QtCore import (
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, 
     QPushButton, QLabel, QFileDialog, 
-    QLineEdit, QComboBox, QDialog
+    QLineEdit, QComboBox, QDialog,
+    QStackedWidget
 )
 from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
 from PySide6.QtMultimediaWidgets import QVideoWidget
@@ -16,14 +17,12 @@ from PySide6.QtGui import QDoubleValidator, QIntValidator
 
 from shell_delta.ui.opengl import OpenGLImageWidget
 from shell_delta.ui.render_dialog import RenderDialog
-from shell_delta.ui.expression_editor import ExpressionEditor
-from shell_delta.graphics.player import SequencePlayer
+from shell_delta.ui.expression_widgets import TCLExpressionWidget, CELExpressionWidget
 from shell_delta.render import time_map
 from shell_delta.io.io_sadpj import IO_SADPJ
 from shell_delta.expression.tcl_engine import TCLEngine
 from shell_delta.utils.editing_utils import EditingUtils
 from shell_delta import gb_var
-
 
 
 class MainUserUi(QWidget):
@@ -78,7 +77,6 @@ class MainUserUi(QWidget):
         self.ref_audio_widget = QAudioOutput()
         self.ref_player.setAudioOutput(self.ref_audio_widget)
 
-        ref_seq_parent = QWidget()
         self.ref_gl_widget = OpenGLImageWidget("")
         graphics_sublo.addWidget(self.ref_gl_widget)
         graphics_lo.addLayout(graphics_sublo, stretch=1)
@@ -128,52 +126,35 @@ class MainUserUi(QWidget):
         video_lo.addLayout(fps_input_lo)
         main_lo.addLayout(video_lo, 1) 
 
-        command_lo = QHBoxLayout()
-        self.command_func_combo = QComboBox()
-        self.command_func_combo.setFixedWidth(300)
-        command_lo.addWidget(self.command_func_combo)
-        self.exec_btn = QPushButton("Run Expression")
-        self.exec_btn.clicked.connect(self.run_expression)
-        command_lo.addWidget(self.exec_btn)
-        self.edit_btn = QPushButton("Edit Expression")
-        self.edit_btn.clicked.connect(self.edit_expresion)
-        command_lo.addWidget(self.edit_btn)
+        expression_lo = QHBoxLayout()
+        self.expression_lang_combo = QComboBox()
+        self.expression_lang_combo.setFixedWidth(80)
+        self.expression_lang_combo.addItems(["TCL", "CEL"])
+        self.expression_lang_combo.setCurrentText("TCL")
+        self.expression_lang_combo.currentIndexChanged.connect(self.switch_expression_lang)
+        expression_lo.addWidget(self.expression_lang_combo)
 
-        command_lo.addStretch
-        self.from_word_label = QLabel("from")
-        command_lo.addWidget(self.from_word_label)
-        self.run_from_input = QLineEdit("0")
-        self.run_from_input.setValidator(QIntValidator())
-        command_lo.addWidget(self.run_from_input)
-        self.to_word_label = QLabel("to")
-        command_lo.addWidget(self.to_word_label)
-        self.run_to_input = QLineEdit("1")
-        self.run_to_input.setValidator(QIntValidator())
-        command_lo.addWidget(self.run_to_input)
-        main_lo.addLayout(command_lo)
+        self.expression_widgets = QStackedWidget()
+        self.tcl_widget = TCLExpressionWidget()
+        self.expression_widgets.addWidget(self.tcl_widget)
+        self.cel_widget = CELExpressionWidget()
+        self.expression_widgets.addWidget(self.cel_widget)
+        expression_lo.addWidget(self.expression_widgets)
+        self.expression_widgets.setCurrentIndex(0)
+        main_lo.addLayout(expression_lo)
 
-        self.command_func_combo.hide()
-        self.exec_btn.hide()
-        self.edit_btn.hide()
-        self.from_word_label.hide()
-        self.run_from_input.hide()
-        self.to_word_label.hide()
-        self.run_to_input.hide()
+        self.expression_widgets.hide()
+        self.expression_lang_combo.hide()
 
         self.setStyleSheet(gb_var.style_script.MAIN_WIN_STYLESHEET)
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setLayout(main_lo)
 
     def _show_expression_panel(self):
-        self.command_func_combo.show()
-        self.exec_btn.show()
-        self.edit_btn.show()
-        self.from_word_label.show()
-        self.run_from_input.show()
-        self.to_word_label.show()
-        self.run_to_input.show()
-        self.command_func_combo.clear()
-        self.command_func_combo.addItems(TCLEngine().get_procs())
+        self.expression_widgets.show()
+        self.expression_lang_combo.show()
+        self.tcl_widget.command_func_combo.clear()
+        self.tcl_widget.command_func_combo.addItems(TCLEngine().get_procs())
 
     def read_proj(self):
         filename, _ = QFileDialog.getOpenFileName(self, "Open Sequence", "", "Shell Delta proj. (*.sadpj)")
@@ -315,31 +296,15 @@ class MainUserUi(QWidget):
                     original_text="Render")
                 )
 
-    def edit_expresion(self):
-        expression_edit = ExpressionEditor().exec()
-        if expression_edit == QDialog.Accepted:
-            self.command_func_combo.clear()
-            self.command_func_combo.addItems(TCLEngine().get_procs())
-
-    def run_expression(self):
-        func_name = self.command_func_combo.currentText()
-        from_frame = int(self.run_from_input.text())
-        to_frame = int(self.run_to_input.text())
-        for frame in range(from_frame, to_frame+1):
-            tcl_rtn = TCLEngine().run_tcl(
-                func_name=func_name,
-                frame=frame
-            )
-            time_map.time_map[frame] = int(tcl_rtn)
-        self.exec_btn.setStyleSheet(f"color : {gb_var.style_script.MAIN_WIN_SUCCESS} ;")
-        self.exec_btn.setText("Executed")
-        self.exec_btn.setEnabled(False)
-        QTimer().singleShot(
-            2000, 
-            lambda: self._recover_btn(
-                btn=self.exec_btn,
-                original_text="Run Expression")
-            )
+    def switch_expression_lang(self):
+        lang = self.expression_lang_combo.currentText()
+        if lang == "TCL":
+            self.expression_widgets.setCurrentIndex(0)
+        elif lang == "CEL":
+            self.expression_widgets.setCurrentIndex(1)
+        else:
+            self.expression_widgets.setCurrentIndex(0)
+            
 
     def _recover_btn(self, 
                      btn: QPushButton,
