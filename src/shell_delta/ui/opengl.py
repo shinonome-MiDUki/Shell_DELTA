@@ -8,6 +8,7 @@ from PySide6.QtOpenGL import QOpenGLTexture
 from OpenGL import GL
 
 from shell_delta.render import time_map
+from shell_delta import gb_var
 from shell_delta.utils.editing_utils import EditingUtils
 
 class OpenGLImageWidget(QOpenGLWidget):
@@ -53,6 +54,7 @@ class OpenGLImageWidget(QOpenGLWidget):
     def change_image(self, 
                      new_image_path: str | Path
                      ) -> None:
+        new_image_path = str(new_image_path)
         self.makeCurrent()
         self._load_texture(new_image_path)
         self.resizeGL(self.width(), self.height())
@@ -64,7 +66,7 @@ class OpenGLImageWidget(QOpenGLWidget):
             return
         img_idx_list = list(set([int(v) for _, v in time_map.time_map.items()]))
         img_file_path_list = [
-            EditingUtils.get_actual_filepath(img_idx=i) 
+            str(gb_var.sequence_root_dir / EditingUtils.get_actual_filepath(img_idx=i)) 
             for i in img_idx_list
         ]
         self.ram_img_buffer = {}
@@ -75,7 +77,8 @@ class OpenGLImageWidget(QOpenGLWidget):
                 texture = QOpenGLTexture(image)
                 texture.setMinificationFilter(QOpenGLTexture.Filter.Linear)
                 texture.setMagnificationFilter(QOpenGLTexture.Filter.Linear)
-            self.ram_img_buffer[img_file_path] = (texture, asp_ratio)
+                self.ram_img_buffer[img_file_path] = (texture, asp_ratio)
+        print(len(self.ram_img_buffer))
 
 
     def change_image_onram(self,
@@ -83,10 +86,15 @@ class OpenGLImageWidget(QOpenGLWidget):
                            ) -> None:
         if not self.ram_img_buffer:
             return
-        buf = self.ram_img_buffer[next_image_path]
-        self.texture = buf[0]
-        self.image_ratio = buf[1]
-        self.update()
+        next_image_path = str(next_image_path)
+        try:
+            buf = self.ram_img_buffer.get(next_image_path, "")
+            self.texture = buf[0]
+            self.image_ratio = buf[1]
+            self.update()
+        except:
+            print(next_image_path)
+            pass
 
     def release_buffer(self):
         if not self.ram_img_buffer:

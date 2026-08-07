@@ -2,18 +2,22 @@ import re
 from pathlib import Path
 
 from PySide6.QtCore import (
-    Qt, QThread, QTimer,
-    QUrl
+    Qt, QTimer, QUrl, 
+    QPoint
     )
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, 
-    QPushButton, QLabel, QFileDialog, 
-    QLineEdit, QComboBox, QDialog,
-    QStackedWidget
+    QApplication, QWidget, QVBoxLayout, 
+    QHBoxLayout, QPushButton, QLabel, 
+    QFileDialog, QLineEdit, QComboBox, 
+    QDialog, QStackedWidget
 )
-from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
+from PySide6.QtMultimedia import (
+    QAudioOutput, QMediaPlayer, QVideoFrame
+    )
 from PySide6.QtMultimediaWidgets import QVideoWidget
 from PySide6.QtGui import QDoubleValidator, QIntValidator
+import cv2
+import psutil
 
 from shell_delta.ui.opengl import OpenGLImageWidget
 from shell_delta.ui.render_dialog import RenderDialog
@@ -29,9 +33,13 @@ class MainUserUi(QWidget):
     def __init__(self):
         super().__init__()
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.setMouseTracking(True)
+
         gb_var.frame_notation_len = 0
+        self.is_on_main_window = True
         self.inputting = False
         self.seq_idx = 0
+        self.ref_seq_idx = 0
 
         main_lo = QVBoxLayout()
         main_lo.setSpacing(10)
@@ -70,17 +78,24 @@ class MainUserUi(QWidget):
         graphics_lo.addWidget(self.gl_widget, stretch=2)
 
         self.ref_player = QMediaPlayer()
+        self.ref_fps = 0.0
         graphics_sublo = QVBoxLayout()
         self.ref_video_widget = QVideoWidget()
         graphics_sublo.addWidget(self.ref_video_widget)
         self.ref_player.setVideoOutput(self.ref_video_widget)
         self.ref_audio_widget = QAudioOutput()
         self.ref_player.setAudioOutput(self.ref_audio_widget)
+        self.ref_player.videoSink().videoFrameChanged.connect(self.ref_video_proceed)
 
         self.ref_gl_widget = OpenGLImageWidget("")
+        self.ref_gl_widget.setObjectName("RefOpenGLWidget")
         graphics_sublo.addWidget(self.ref_gl_widget)
         graphics_lo.addLayout(graphics_sublo, stretch=1)
         main_lo.addLayout(graphics_lo, 6)
+        self.ref_seq_idx_label = QLabel("--", self.ref_gl_widget)
+        self.ref_seq_idx_label.setStyleSheet("color : white ;")
+        self.ref_seq_idx_label.move(15, 10)
+        self.ref_seq_idx_label.setFixedWidth(30)
 
         btn_lo = QHBoxLayout()
         prev_btn = QPushButton("Previous")
@@ -108,6 +123,10 @@ class MainUserUi(QWidget):
         self.pause_btn.clicked.connect(self.pause_sequence)
         self.pause_btn.setEnabled(False)
         video_lo.addWidget(self.pause_btn)
+        mem = round(psutil.virtual_memory().percent)
+        self.release_buff_btn = QPushButton(f"Release Buff. ({mem}%)")
+        self.release_buff_btn.clicked.connect(self.release_buffer)
+        video_lo.addWidget(self.release_buff_btn)
         self.render_btn = QPushButton("Render")
         self.render_btn.setObjectName("primaryButton")
         self.render_btn.clicked.connect(self.render_sequence)
@@ -129,7 +148,7 @@ class MainUserUi(QWidget):
         expression_lo = QHBoxLayout()
         self.expression_lang_combo = QComboBox()
         self.expression_lang_combo.setFixedWidth(80)
-        self.expression_lang_combo.addItems(["TCL", "CEL"])
+        self.expression_lang_combo.addItems(["TCL", "CEL", "GLSL", "Python"])
         self.expression_lang_combo.setCurrentText("TCL")
         self.expression_lang_combo.currentIndexChanged.connect(self.switch_expression_lang)
         expression_lo.addWidget(self.expression_lang_combo)
@@ -182,6 +201,9 @@ class MainUserUi(QWidget):
             f"Working Sequence : {gb_var.sequence_root_dir / gb_var.mata_filename}"
             )
         self.ref_player.setSource(QUrl.fromLocalFile(str(gb_var.ref_path)))
+        cv2_videocap = cv2.VideoCapture(str(gb_var.ref_path))
+        self.ref_fps = cv2_videocap.get(cv2.CAP_PROP_FPS) if cv2_videocap.isOpened() else 0.0
+        cv2_videocap.release()
         self._show_expression_panel()
 
 
@@ -198,7 +220,7 @@ class MainUserUi(QWidget):
             "mata_filename" : gb_var.mata_filename,
             "first_sequence_idx" : gb_var.first_sequence_idx,
             "frame_notation_len" : gb_var.frame_notation_len,
-            "ref_path" : gb_var.ref_path
+            "ref_path" : str(gb_var.ref_path)
         }
         IO_SADPJ.write_sadpj(
             saving_path=filename,
@@ -214,19 +236,32 @@ class MainUserUi(QWidget):
         if gb_var.mata_filename is None:
             return
         self.inputting = False
-        if is_increment:
-            self.seq_idx += increment_step if is_foward else -increment_step
+        if self.is_on_main_window:
+            if is_increment:
+                self.seq_idx += increment_step if is_foward else -increment_step
+            else:
+                self.seq_idx = int(self.current_frame_label.text())
+            actual_img_idx = EditingUtils.get_actual_img_idx(seq_idx=self.seq_idx)
+            actual_filename = EditingUtils.get_actual_filepath(img_idx=actual_img_idx)
+            self.current_actual_img_idx_label.setText(str(actual_img_idx))
+            self.current_frame_label.setText(str(self.seq_idx))
         else:
-            self.seq_idx = int(self.current_frame_label.text())
-        actual_img_idx = EditingUtils.get_actual_img_idx(seq_idx=self.seq_idx)
-        actual_filename = EditingUtils.get_actual_filepath(img_idx=actual_img_idx)
-        self.current_actual_img_idx_label.setText(str(actual_img_idx))
+            if is_increment:
+                self.ref_seq_idx += increment_step if is_foward else -increment_step
+            else:
+                self.ref_seq_idx = int(self.current_frame_label.text())
+            self.ref_seq_idx_label.setText(str(self.ref_seq_idx))
+            actual_filename = EditingUtils.get_actual_filepath(img_idx=self.ref_seq_idx)
         new_image_path = gb_var.sequence_root_dir / actual_filename
         if not new_image_path.exists():
             new_image_path = ""
-        self.current_frame_label.setText(str(self.seq_idx))
-        self.gl_widget.change_image(
-            new_image_path=str(new_image_path)
+        if self.is_on_main_window:
+            self.gl_widget.change_image(
+                new_image_path=str(new_image_path)
+            )
+        else:
+            self.ref_gl_widget.change_image(
+                new_image_path=str(new_image_path)
             )
 
     def open_sequence(self):
@@ -268,8 +303,16 @@ class MainUserUi(QWidget):
             return
         self.ref_player.setSource(QUrl.fromLocalFile(filename))
         gb_var.ref_path = filename
+        cv2_videocap = cv2.VideoCapture(filename)
+        self.ref_fps = cv2_videocap.get(cv2.CAP_PROP_FPS) if cv2_videocap.isOpened() else 0.0
+        cv2_videocap.release()
 
     def play_sequence(self):
+        if not self.gl_widget.ram_img_buffer:
+            print("buffering")
+            self.gl_widget.send_img_to_buffer()
+        mem = round(psutil.virtual_memory().percent)
+        self.release_buff_btn.setText(f"Release Buff. ({mem}%)")
         self.play_btn.setEnabled(False)
         self.pause_btn.setEnabled(True)
         self.ref_player.play()
@@ -279,9 +322,32 @@ class MainUserUi(QWidget):
         self.play_btn.setEnabled(True)
         self.pause_btn.setEnabled(False)
 
+    def release_buffer(self):
+        if self.gl_widget.ram_img_buffer:
+            self.gl_widget.release_buffer()
+            mem = round(psutil.virtual_memory().percent)
+            self.release_buff_btn.setText(f"Release Buff. ({mem}%)")
+
     def on_finished(self):
         self.play_btn.setEnabled(True)
         self.pause_btn.setEnabled(False)
+
+    def ref_video_proceed(self, frame: QVideoFrame):
+        if not frame.isValid() or gb_var.mata_filename is None:
+            return
+        current_frame = int(round((frame.startTime() / 1000000.0) * self.ref_fps))
+        self.seq_idx = current_frame
+        self.current_frame_label.setText(str(self.seq_idx))
+        actual_img_idx = EditingUtils.get_actual_img_idx(seq_idx=self.seq_idx)
+        actual_filename = EditingUtils.get_actual_filepath(img_idx=actual_img_idx)
+        self.current_actual_img_idx_label.setText(str(actual_img_idx))
+        next_image_path = gb_var.sequence_root_dir / actual_filename
+        if not next_image_path.exists():
+            next_image_path = ""
+        self.gl_widget.change_image_onram(
+            next_image_path=next_image_path
+        )
+        
 
     def render_sequence(self):
         render_dialog_call = RenderDialog(fps=int(self.fps_input_field.text())).exec()
@@ -364,3 +430,12 @@ class MainUserUi(QWidget):
                 self.input_frame_num_str = ""
             self.input_frame_num_str += str(_num_keys[pressed])
             self.current_actual_img_idx_label.setText(self.input_frame_num_str)
+
+    def mouseMoveEvent(self, event):
+        widget_on = QApplication.widgetAt(event.globalPosition().toPoint())
+        if widget_on != self.ref_gl_widget:
+            self.is_on_main_window = True
+            self.ref_seq_idx_label.setStyleSheet("color : white ;")
+        else:
+            self.is_on_main_window = False
+            self.ref_seq_idx_label.setStyleSheet("color : green ;")

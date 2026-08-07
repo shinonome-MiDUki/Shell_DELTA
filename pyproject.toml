@@ -21,7 +21,8 @@ dependencies = [
   "PyOpenGL",
   "opencv-python",
   "numpy",
-  "cel-expr-python"
+  "cel-expr-python",
+  "psutil"
 ]
 requires-python = ">=3.12"
 authors = [

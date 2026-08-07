@@ -14,5 +14,5 @@ class CELEngine:
     def run_cel(self,
                 data: dict
                 ) -> str:
-        rtn = self.expr.eval(data=data)
+        rtn = self.expr.eval(data=data).value()
         return rtn

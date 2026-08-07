@@ -26,12 +26,12 @@ class TCLExpressionWidget(QWidget):
         lo.addWidget(self.edit_btn)
 
         lo.addStretch
-        self.from_word_label = QLabel("from")
+        self.from_word_label = QLabel("loop over frames")
         lo.addWidget(self.from_word_label)
         self.run_from_input = QLineEdit("0")
         self.run_from_input.setValidator(QIntValidator())
         lo.addWidget(self.run_from_input)
-        self.to_word_label = QLabel("to")
+        self.to_word_label = QLabel(" ~ ")
         lo.addWidget(self.to_word_label)
         self.run_to_input = QLineEdit("1")
         self.run_to_input.setValidator(QIntValidator())
@@ -86,12 +86,12 @@ class CELExpressionWidget(QWidget):
         lo.addWidget(self.exec_btn)
 
         lo.addStretch
-        self.from_word_label = QLabel("from")
+        self.from_word_label = QLabel("loop over frames")
         lo.addWidget(self.from_word_label)
         self.run_from_input = QLineEdit("0")
         self.run_from_input.setValidator(QIntValidator())
         lo.addWidget(self.run_from_input)
-        self.to_word_label = QLabel("to")
+        self.to_word_label = QLabel(" ~ ")
         lo.addWidget(self.to_word_label)
         self.run_to_input = QLineEdit("1")
         self.run_to_input.setValidator(QIntValidator())
