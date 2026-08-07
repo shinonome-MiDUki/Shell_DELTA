@@ -1,3 +1,4 @@
 **/__pycache__/**
 **/.DS_Store
 src/shell_delta/testPNGs/
+/dist/**

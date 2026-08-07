@@ -6,62 +6,6 @@ from PySide6.QtWidgets import (
 from shell_delta import gb_var
 from shell_delta.io.io_sadpj import IO_SADPJ
 
-# --- Visual theme ---------------------------------
-_BG = "#1b1c22"
-_PANEL = "#24252c"
-_BORDER = "#3a3b45"
-_TEXT = "#e6e6ec"
-_ACCENT = "#5b8cff"
-_ACCENT_HOVER = "#6f9bff"
-_ACCENT_PRESSED = "#4a76e0"
-
-STYLE_SHEET = f"""
-QDialog {{
-    background-color: {_BG};
-    color: {_TEXT};
-    font-family: 'Segoe UI', 'Helvetica Neue', sans-serif;
-    font-size: 13px;
-}}
-QPlainTextEdit {{
-    background-color: {_PANEL};
-    color: {_TEXT};
-    border: 1px solid {_BORDER};
-    border-radius: 6px;
-    padding: 8px;
-    font-family: Consolas, 'Courier New', monospace;
-}}
-QPlainTextEdit:focus {{
-    border: 1px solid {_ACCENT};
-}}
-QPushButton {{
-    background-color: {_PANEL};
-    color: {_TEXT};
-    border: 1px solid {_BORDER};
-    border-radius: 6px;
-    padding: 6px 14px;
-}}
-QPushButton:hover {{
-    background-color: #34353f;
-    border: 1px solid {_ACCENT};
-}}
-QPushButton:pressed {{
-    background-color: #202128;
-}}
-QPushButton#primaryButton {{
-    background-color: {_ACCENT};
-    color: #ffffff;
-    border: 1px solid {_ACCENT};
-    font-weight: 600;
-}}
-QPushButton#primaryButton:hover {{
-    background-color: {_ACCENT_HOVER};
-}}
-QPushButton#primaryButton:pressed {{
-    background-color: {_ACCENT_PRESSED};
-}}
-"""
-
-
 class ExpressionEditor(QDialog):
     def __init__(self):
         super().__init__()
@@ -86,7 +30,7 @@ class ExpressionEditor(QDialog):
         btn_lo.addWidget(open_tcl_btn)
         dialog_lo.addLayout(btn_lo)
 
-        self.setStyleSheet(STYLE_SHEET)
+        self.setStyleSheet(gb_var.style_script.EXP_EDITOR_STYLESHEET)
         self.setLayout(dialog_lo)
 
     def load_tcl_script(self):

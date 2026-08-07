@@ -6,13 +6,16 @@ from PySide6.QtGui import QImage
 from PySide6.QtOpenGL import QOpenGLTexture
 from OpenGL import GL
 
+from shell_delta.render import time_map
+from shell_delta.utils.editing_utils import EditingUtils
 
 class OpenGLImageWidget(QOpenGLWidget):
     def __init__(self, image_path, parent=None):
         super().__init__(parent)
         self.image_path = image_path
         self.texture = None
-        self.image_ratio = 1.0  # 画像の幅/高さ
+        self.image_ratio = 1.0 
+        self.ram_img_buffer: dict[str, QOpenGLTexture] = {}
 
     def initializeGL(self):
         GL.glClearColor(0, 0, 0, 1.0)
@@ -47,15 +50,33 @@ class OpenGLImageWidget(QOpenGLWidget):
             self.texture.setMagnificationFilter(QOpenGLTexture.Filter.Linear)
 
     def change_image(self, 
-                     new_image_path: str | Path,
-                     target_time: float = 0.0
+                     new_image_path: str | Path
                      ) -> None:
         self.makeCurrent()
         self._load_texture(new_image_path)
         self.resizeGL(self.width(), self.height())
         self.doneCurrent()
-        while (time.time() < target_time): ...
         self.update()
+
+    def _send_img_to_buffer(self):
+        img_idx_list = list(set([int(v) for _, v in time_map.time_map.items()]))
+        img_file_path_list = [
+            EditingUtils.get_actual_filepath(img_idx=i) 
+            for i in img_idx_list
+        ]
+        self.ram_img_buffer = {}
+        for img_file_path in img_file_path_list:
+            image = QImage(img_file_path).mirrored()
+            if not image.isNull():
+                self.image_ratio = image.width() / image.height()
+                texture = QOpenGLTexture(image)
+                texture.setMinificationFilter(QOpenGLTexture.Filter.Linear)
+                texture.setMagnificationFilter(QOpenGLTexture.Filter.Linear)
+            self.ram_img_buffer[img_file_path] = texture
+
+
+    def change_image_onram(self):
+        ...
 
 
     def resizeGL(self, w, h):

@@ -21,75 +21,9 @@ from shell_delta.graphics.player import SequencePlayer
 from shell_delta.render import time_map
 from shell_delta.io.io_sadpj import IO_SADPJ
 from shell_delta.expression.tcl_engine import TCLEngine
+from shell_delta.utils.editing_utils import EditingUtils
 from shell_delta import gb_var
 
-# --- Visual theme ---------------------------------
-_BG = "#1b1c22"
-_PANEL = "#24252c"
-_BORDER = "#3a3b45"
-_TEXT = "#e6e6ec"
-_TEXT_DIM = "#9a9ba8"
-_ACCENT = "#5b8cff"
-_ACCENT_HOVER = "#6f9bff"
-_ACCENT_PRESSED = "#4a76e0"
-_SUCCESS = "#43b581"
-
-STYLE_SHEET = f"""
-QWidget {{
-    background-color: {_BG};
-    color: {_TEXT};
-    font-family: 'Segoe UI', 'Helvetica Neue', sans-serif;
-    font-size: 13px;
-}}
-QLabel {{
-    color: {_TEXT_DIM};
-    background: transparent;
-}}
-QPushButton {{
-    background-color: {_PANEL};
-    color: {_TEXT};
-    border: 1px solid {_BORDER};
-    border-radius: 6px;
-    padding: 6px 14px;
-}}
-QPushButton:hover {{
-    background-color: #34353f;
-    border: 1px solid {_ACCENT};
-}}
-QPushButton:pressed {{
-    background-color: #202128;
-}}
-QPushButton:disabled {{
-    color: #6b6c78;
-    background-color: #202128;
-    border: 1px solid {_PANEL};
-}}
-QPushButton#primaryButton {{
-    background-color: {_ACCENT};
-    color: #ffffff;
-    border: 1px solid {_ACCENT};
-    font-weight: 600;
-}}
-QPushButton#primaryButton:hover {{
-    background-color: {_ACCENT_HOVER};
-}}
-QPushButton#primaryButton:pressed {{
-    background-color: {_ACCENT_PRESSED};
-}}
-QLineEdit, QComboBox {{
-    background-color: {_PANEL};
-    color: {_TEXT};
-    border: 1px solid {_BORDER};
-    border-radius: 6px;
-    padding: 4px 8px;
-}}
-QLineEdit:focus, QComboBox:focus {{
-    border: 1px solid {_ACCENT};
-}}
-QComboBox::drop-down {{
-    border: none;
-}}
-"""
 
 
 class MainUserUi(QWidget):
@@ -108,6 +42,9 @@ class MainUserUi(QWidget):
         read_btn = QPushButton("Read Sequence")
         read_btn.clicked.connect(self.open_sequence)
         io_lo.addWidget(read_btn)
+        read_ref_btn = QPushButton("Read Ref")
+        read_ref_btn.clicked.connect(self.open_reference)
+        io_lo.addWidget(read_ref_btn)
         save_btn = QPushButton("Save")
         save_btn.clicked.connect(self.save_proj)
         io_lo.addWidget(save_btn)
@@ -121,8 +58,8 @@ class MainUserUi(QWidget):
         self.current_actual_img_idx_label.setFixedWidth(50)
         self.current_actual_img_idx_label.setAlignment(Qt.AlignCenter) 
         self.current_actual_img_idx_label.setStyleSheet(
-            f"border: 1px solid {_ACCENT}; border-radius: 6px; "
-            f"background-color: {_PANEL}; color: {_TEXT}; font-weight: 600;"
+            f"border: 1px solid {gb_var.style_script.MAIN_WIN_ACCENT}; border-radius: 6px; "
+            f"background-color: {gb_var.style_script.MAIN_WIN_PANEL}; color: {gb_var.style_script.MAIN_WIN_TEXT}; font-weight: 600;"
         )
         labels_lo.addWidget(self.current_actual_img_idx_label)
         self.current_opened_label = QLabel("Working Sequence : None")
@@ -140,17 +77,6 @@ class MainUserUi(QWidget):
         self.ref_player.setVideoOutput(self.ref_video_widget)
         self.ref_audio_widget = QAudioOutput()
         self.ref_player.setAudioOutput(self.ref_audio_widget)
-        ref_btn_lo = QHBoxLayout()
-        read_ref_btn = QPushButton("Read Ref")
-        read_ref_btn.clicked.connect(self.open_reference)
-        ref_btn_lo.addWidget(read_ref_btn)
-        play_ref_btn = QPushButton("Play Ref")
-        play_ref_btn.clicked.connect(self.ref_player.play)
-        ref_btn_lo.addWidget(play_ref_btn)
-        pause_ref_btn = QPushButton("Pause Ref")
-        pause_ref_btn.clicked.connect(self.ref_player.pause)
-        ref_btn_lo.addWidget(pause_ref_btn)
-        graphics_sublo.addLayout(ref_btn_lo)
 
         ref_seq_parent = QWidget()
         self.ref_gl_widget = OpenGLImageWidget("")
@@ -234,19 +160,9 @@ class MainUserUi(QWidget):
         self.to_word_label.hide()
         self.run_to_input.hide()
 
-        self.setStyleSheet(STYLE_SHEET)
+        self.setStyleSheet(gb_var.style_script.MAIN_WIN_STYLESHEET)
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setLayout(main_lo)
-
-    def _get_actual_img_idx(self) -> int:
-        actual_img_idx = time_map.time_map.get(self.seq_idx, None)
-        if actual_img_idx is not None:
-            return actual_img_idx
-        checking_idx = self.seq_idx - 1
-        while actual_img_idx is None and checking_idx >= 0:
-            actual_img_idx = time_map.time_map.get(checking_idx, None)
-            checking_idx -= 1
-        return actual_img_idx if actual_img_idx is not None else -1
 
     def _show_expression_panel(self):
         self.command_func_combo.show()
@@ -268,11 +184,8 @@ class MainUserUi(QWidget):
         if gb_var.mata_filename is None:
             return
         self.inputting = False
-        actual_img_idx = self._get_actual_img_idx()
-        actual_filename = gb_var.mata_filename.replace(
-            '#' * gb_var.frame_notation_len, 
-            f"{actual_img_idx:0{gb_var.frame_notation_len}d}"
-            )
+        actual_img_idx = EditingUtils.get_actual_img_idx(seq_idx=self.seq_idx)
+        actual_filename = EditingUtils.get_actual_filepath(img_idx=actual_img_idx)
         self.current_actual_img_idx_label.setText(str(actual_img_idx))
         new_image_path = gb_var.sequence_root_dir / actual_filename
         if not new_image_path.exists():
@@ -324,11 +237,8 @@ class MainUserUi(QWidget):
             self.seq_idx += increment_step if is_foward else -increment_step
         else:
             self.seq_idx = int(self.current_frame_label.text())
-        actual_img_idx = self._get_actual_img_idx()
-        actual_filename = gb_var.mata_filename.replace(
-            '#' * gb_var.frame_notation_len, 
-            f"{actual_img_idx:0{gb_var.frame_notation_len}d}"
-            )
+        actual_img_idx = EditingUtils.get_actual_img_idx(seq_idx=self.seq_idx)
+        actual_filename = EditingUtils.get_actual_filepath(img_idx=actual_img_idx)
         self.current_actual_img_idx_label.setText(str(actual_img_idx))
         new_image_path = gb_var.sequence_root_dir / actual_filename
         if not new_image_path.exists():
@@ -381,31 +291,12 @@ class MainUserUi(QWidget):
     def play_sequence(self):
         self.play_btn.setEnabled(False)
         self.pause_btn.setEnabled(True)
-
-        self.td = QThread()
-        self.worker = SequencePlayer(
-            gl_widget=self.gl_widget,
-            fps=float(self.fps_input_field.text()),
-            current_idx=self.seq_idx,
-            meta_filename=gb_var.mata_filename,
-            sequence_root_dir=gb_var.sequence_root_dir,
-            frame_notation_len=gb_var.frame_notation_len,
-            frame_img_dict=time_map.time_map
-        )
-        self.worker.moveToThread(self.td)
-        self.td.started.connect(self.worker.play_sequence)
-        self.worker.SIG.connect(self.td.quit)
-        self.worker.SIG.connect(self.worker.deleteLater)
-        self.td.finished.connect(self.td.deleteLater)
-        self.td.finished.connect(self.on_finished)
-
-        self.td.start()
+        self.ref_player.play()
 
     def pause_sequence(self, arrived_idx):
-        if self.worker:
-            self.worker.stop()
-            self.seq_idx = arrived_idx
-            self.current_frame_label.setText(str(self.seq_idx))
+        self.ref_player.pause()
+        self.play_btn.setEnabled(True)
+        self.pause_btn.setEnabled(False)
 
     def on_finished(self):
         self.play_btn.setEnabled(True)
@@ -414,7 +305,7 @@ class MainUserUi(QWidget):
     def render_sequence(self):
         render_dialog_call = RenderDialog(fps=int(self.fps_input_field.text())).exec()
         if render_dialog_call == QDialog.Accepted:
-            self.render_btn.setStyleSheet(f"color : {_SUCCESS} ;")
+            self.render_btn.setStyleSheet(f"color : {gb_var.style_script.MAIN_WIN_SUCCESS} ;")
             self.render_btn.setText("Rendered")
             self.render_btn.setEnabled(False)
             QTimer().singleShot(
@@ -440,7 +331,7 @@ class MainUserUi(QWidget):
                 frame=frame
             )
             time_map.time_map[frame] = int(tcl_rtn)
-        self.exec_btn.setStyleSheet(f"color : {_SUCCESS} ;")
+        self.exec_btn.setStyleSheet(f"color : {gb_var.style_script.MAIN_WIN_SUCCESS} ;")
         self.exec_btn.setText("Executed")
         self.exec_btn.setEnabled(False)
         QTimer().singleShot(
@@ -454,7 +345,7 @@ class MainUserUi(QWidget):
                      btn: QPushButton,
                      original_text: str
                      ):
-        btn.setStyleSheet(f"color : {_TEXT} ;")
+        btn.setStyleSheet(f"color : {gb_var.style_script.MAIN_WIN_TEXT} ;")
         btn.setText(original_text)
         btn.setEnabled(True)
 
@@ -483,10 +374,7 @@ class MainUserUi(QWidget):
                 return
             self.inputting = False
             time_map.time_map[self.seq_idx] = int(self.input_frame_num_str)
-            actual_filename = gb_var.mata_filename.replace(
-                '#' * gb_var.frame_notation_len, 
-                f"{time_map.time_map[self.seq_idx]:0{gb_var.frame_notation_len}d}"
-                )
+            actual_filename = EditingUtils.get_actual_filepath(img_idx=time_map.time_map[self.seq_idx])
             designated_image_path = gb_var.sequence_root_dir / actual_filename
             if not designated_image_path.exists():
                 designated_image_path = ""

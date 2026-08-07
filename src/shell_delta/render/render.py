@@ -3,6 +3,7 @@ from pathlib import Path
 import cv2
 
 from shell_delta.render import time_map
+from shell_delta.utils.editing_utils import EditingUtils
 from shell_delta import gb_var
 
 class RenderVideo:
@@ -31,10 +32,7 @@ class RenderVideo:
         idx_to_use = 0
         for i in range (self.export_range[0], self.export_range[1]+1):
             idx_to_use = i if int(i) in time_map_dict or str(i) in time_map_dict else idx_to_use
-            actual_filename = gb_var.mata_filename.replace(
-                '#' * gb_var.frame_notation_len, 
-                f"{idx_to_use:0{gb_var.frame_notation_len}d}"
-            )
+            actual_filename = EditingUtils.get_actual_filepath(img_idx=idx_to_use)
             image_path = str(gb_var.sequence_root_dir / actual_filename)
             if not Path(image_path).exists():
                 image_path = str(Path(__file__).resolve().parents[1] / "_resources/fallback.png")

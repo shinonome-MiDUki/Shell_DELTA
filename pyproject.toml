@@ -5,6 +5,14 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/shell_delta"]
 
+[tool.hatch.build]
+exclude = [
+  "/shelldelta_env",
+  "/.git",
+  "/.pytest_cache",
+  "/**/__pycache__",
+]
+
 [project]
 name = "ShellDelta"
 version = "2026.0.1"
@@ -30,4 +38,5 @@ classifiers = [
   "Programming Language :: Python"
 ]
 
-
+[project.urls]
+Repository = "https://github.com/shinonome-MiDUki/Shell_DELTA"

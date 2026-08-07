@@ -7,67 +7,7 @@ from PySide6.QtGui import QIntValidator, QDoubleValidator
 
 from shell_delta.render import render_formats
 from shell_delta.render.render import RenderVideo
-
-# --- Visual theme ---------------------------------
-_BG = "#1b1c22"
-_PANEL = "#24252c"
-_BORDER = "#3a3b45"
-_TEXT = "#e6e6ec"
-_ACCENT = "#5b8cff"
-_ACCENT_HOVER = "#6f9bff"
-_ACCENT_PRESSED = "#4a76e0"
-
-STYLE_SHEET = f"""
-QDialog {{
-    background-color: {_BG};
-    color: {_TEXT};
-    font-family: 'Segoe UI', 'Helvetica Neue', sans-serif;
-    font-size: 13px;
-}}
-QLabel {{
-    color: {_TEXT};
-    background: transparent;
-}}
-QPushButton {{
-    background-color: {_PANEL};
-    color: {_TEXT};
-    border: 1px solid {_BORDER};
-    border-radius: 6px;
-    padding: 6px 14px;
-}}
-QPushButton:hover {{
-    background-color: #34353f;
-    border: 1px solid {_ACCENT};
-}}
-QPushButton:pressed {{
-    background-color: #202128;
-}}
-QPushButton#primaryButton {{
-    background-color: {_ACCENT};
-    color: #ffffff;
-    border: 1px solid {_ACCENT};
-    font-weight: 600;
-}}
-QPushButton#primaryButton:hover {{
-    background-color: {_ACCENT_HOVER};
-}}
-QPushButton#primaryButton:pressed {{
-    background-color: {_ACCENT_PRESSED};
-}}
-QLineEdit, QComboBox {{
-    background-color: {_PANEL};
-    color: {_TEXT};
-    border: 1px solid {_BORDER};
-    border-radius: 6px;
-    padding: 4px 8px;
-}}
-QLineEdit:focus, QComboBox:focus {{
-    border: 1px solid {_ACCENT};
-}}
-QComboBox::drop-down {{
-    border: none;
-}}
-"""
+from shell_delta import gb_var
 
 
 class RenderDialog(QDialog):
@@ -143,7 +83,7 @@ class RenderDialog(QDialog):
         render_btn.clicked.connect(self.send_to_render)
         dialog_lo.addWidget(render_btn)
 
-        self.setStyleSheet(STYLE_SHEET)
+        self.setStyleSheet(gb_var.style_script.REND_DIALOG_STYLESHEET)
         self.setLayout(dialog_lo)
 
     def browse_file(self):
