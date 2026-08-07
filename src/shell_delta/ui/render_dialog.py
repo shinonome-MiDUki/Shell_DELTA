@@ -89,7 +89,7 @@ class RenderDialog(QDialog):
     def send_to_render(self):
         codec_4cc=render_formats.codec_type_list[self.codec_type_combo.currentText()]
         container_extension=render_formats.container_type_list[self.container_type_combo.currentText()]
-        saving_dir = self.video_dir_input.text()
+        saving_dir = self.video_dir_input.text().rstrip("/")
         video_name = self.video_name_input.text()
         video_size = (int(self.size_x_input.text()), int(self.size_y_input.text()))
         export_range = (int(self.export_from_input.text()), int(self.export_to_input.text()))
@@ -103,3 +103,4 @@ class RenderDialog(QDialog):
             export_range=export_range
         )
         render_video.compose_video()
+        self.accept()

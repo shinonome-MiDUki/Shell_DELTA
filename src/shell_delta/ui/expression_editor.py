@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QPlainTextEdit,
-    QPushButton
+    QPushButton, QHBoxLayout, QFileDialog
 )
 
 from shell_delta import gb_var
@@ -9,6 +9,7 @@ from shell_delta.io.io_sadpj import IO_SADPJ
 class ExpressionEditor(QDialog):
     def __init__(self):
         super().__init__()
+        self.resize(350,200)
 
         dialog_lo = QVBoxLayout()
 
@@ -17,11 +18,24 @@ class ExpressionEditor(QDialog):
         self.set_expression()
         dialog_lo.addWidget(self.scripting_area)
 
+        btn_lo = QHBoxLayout()
         save_btn = QPushButton("Save")
         save_btn.clicked.connect(self.save_expression)
-        dialog_lo.addWidget(save_btn)
+        btn_lo.addWidget(save_btn)
+        open_tcl_btn = QPushButton("Load TCL")
+        open_tcl_btn.clicked.connect(self.load_tcl_script)
+        btn_lo.addWidget(open_tcl_btn)
+        dialog_lo.addLayout(btn_lo)
 
         self.setLayout(dialog_lo)
+
+    def load_tcl_script(self):
+        filename, _ = QFileDialog.getOpenFileName(self, "Open TCL Script", "", "TCL Script (*.tcl)")
+        if not filename:
+            return
+        with open(filename, "r", encoding="utf-8") as f:
+            expression_content = f.read()
+        self.scripting_area.setPlainText(expression_content)
 
     def save_expression(self):
         saving_path = gb_var.saving_path

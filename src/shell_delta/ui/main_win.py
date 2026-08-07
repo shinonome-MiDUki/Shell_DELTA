@@ -2,12 +2,16 @@ import re
 from pathlib import Path
 
 from PySide6.QtCore import (
-    Qt, QThread, )
+    Qt, QThread, QTimer,
+    QUrl
+    )
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, 
     QPushButton, QLabel, QFileDialog, 
     QLineEdit, QComboBox, QDialog
 )
+from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
+from PySide6.QtMultimediaWidgets import QVideoWidget
 from PySide6.QtGui import QDoubleValidator, QIntValidator
 
 from shell_delta.ui.opengl import OpenGLImageWidget
@@ -51,8 +55,34 @@ class MainUserUi(QWidget):
         labels_lo.addWidget(self.current_opened_label)
         main_lo.addLayout(labels_lo)
 
+        graphics_lo = QHBoxLayout()
         self.gl_widget = OpenGLImageWidget("")
-        main_lo.addWidget(self.gl_widget, 6)
+        graphics_lo.addWidget(self.gl_widget, stretch=2)
+
+        self.ref_player = QMediaPlayer()
+        graphics_sublo = QVBoxLayout()
+        self.ref_video_widget = QVideoWidget()
+        graphics_sublo.addWidget(self.ref_video_widget)
+        self.ref_player.setVideoOutput(self.ref_video_widget)
+        self.ref_audio_widget = QAudioOutput()
+        self.ref_player.setAudioOutput(self.ref_audio_widget)
+        ref_btn_lo = QHBoxLayout()
+        read_ref_btn = QPushButton("Read Ref")
+        read_ref_btn.clicked.connect(self.open_reference)
+        ref_btn_lo.addWidget(read_ref_btn)
+        play_ref_btn = QPushButton("Play Ref")
+        play_ref_btn.clicked.connect(self.ref_player.play)
+        ref_btn_lo.addWidget(play_ref_btn)
+        pause_ref_btn = QPushButton("Pause Ref")
+        pause_ref_btn.clicked.connect(self.ref_player.pause)
+        ref_btn_lo.addWidget(pause_ref_btn)
+        graphics_sublo.addLayout(ref_btn_lo)
+
+        ref_seq_parent = QWidget()
+        self.ref_gl_widget = OpenGLImageWidget("")
+        graphics_sublo.addWidget(self.ref_gl_widget)
+        graphics_lo.addLayout(graphics_sublo, stretch=1)
+        main_lo.addLayout(graphics_lo, 6)
 
         btn_lo = QHBoxLayout()
         prev_btn = QPushButton("Previous")
@@ -79,21 +109,26 @@ class MainUserUi(QWidget):
         self.pause_btn.clicked.connect(self.pause_sequence)
         self.pause_btn.setEnabled(False)
         video_lo.addWidget(self.pause_btn)
-        render_btn = QPushButton("Render")
-        render_btn.clicked.connect(self.render_sequence)
-        video_lo.addWidget(render_btn)
+        self.render_btn = QPushButton("Render")
+        self.render_btn.clicked.connect(self.render_sequence)
+        video_lo.addWidget(self.render_btn)
         video_lo.addSpacing
         
         fps_input_lo = QHBoxLayout()
-        fps_input_lo.addWidget(QLabel("FPS : "))
+        fps_label = QLabel("FPS : ")
+        fps_label.setFixedWidth(60)
+        fps_label.setAlignment(Qt.AlignRight)
+        fps_input_lo.addWidget(fps_label)
         self.fps_input_field = QLineEdit("24")
         self.fps_input_field.setValidator(QDoubleValidator())
+        self.fps_input_field.setFixedWidth(60)
         fps_input_lo.addWidget(self.fps_input_field)
         video_lo.addLayout(fps_input_lo)
         main_lo.addLayout(video_lo, 1) 
 
         command_lo = QHBoxLayout()
         self.command_func_combo = QComboBox()
+        self.command_func_combo.setFixedWidth(300)
         command_lo.addWidget(self.command_func_combo)
         self.exec_btn = QPushButton("Run Expression")
         self.exec_btn.clicked.connect(self.run_expression)
@@ -151,7 +186,7 @@ class MainUserUi(QWidget):
         if not filename:
             return
         IO_SADPJ.load_sadpj(reading_path=filename)
-        self.seq_idx = 0
+        self.seq_idx = 1
         if gb_var.mata_filename is None:
             return
         self.inputting = False
@@ -168,10 +203,15 @@ class MainUserUi(QWidget):
         self.gl_widget.change_image(
             new_image_path=str(new_image_path)
             )
+        self.ref_gl_widget.change_image(
+            new_image_path=str(new_image_path)
+        )
         self.current_opened_label.setText(
             f"Working Sequence : {gb_var.sequence_root_dir / gb_var.mata_filename}"
             )
+        self.ref_player.setSource(QUrl.fromLocalFile(str(gb_var.ref_path)))
         self._show_expression_panel()
+
 
     def save_proj(self):
         if gb_var.saving_path is None:
@@ -185,7 +225,8 @@ class MainUserUi(QWidget):
             "sequence_root_dir" : str(gb_var.sequence_root_dir),
             "mata_filename" : gb_var.mata_filename,
             "first_sequence_idx" : gb_var.first_sequence_idx,
-            "frame_notation_len" : gb_var.frame_notation_len
+            "frame_notation_len" : gb_var.frame_notation_len,
+            "ref_path" : gb_var.ref_path
         }
         IO_SADPJ.write_sadpj(
             saving_path=filename,
@@ -228,6 +269,7 @@ class MainUserUi(QWidget):
         if len(matches) != 1:
             return
         self.gl_widget.change_image(new_image_path=filename)
+        self.ref_gl_widget.change_image(new_image_path=filename)
         gb_var.frame_notation_len = len(matches[0]) 
         gb_var.first_sequence_idx = int(matches[0])   
         sharps = '#' * gb_var.frame_notation_len       
@@ -250,6 +292,13 @@ class MainUserUi(QWidget):
         for num in numbers:
             num = int(num)
             time_map.time_map[num] = num
+
+    def open_reference(self):
+        filename, _ = QFileDialog.getOpenFileName(self, "Open Sequence", "", "Video (*.mp4)")
+        if not filename:
+            return
+        self.ref_player.setSource(QUrl.fromLocalFile(filename))
+        gb_var.ref_path = filename
 
     def play_sequence(self):
         self.play_btn.setEnabled(False)
@@ -285,11 +334,22 @@ class MainUserUi(QWidget):
         self.pause_btn.setEnabled(False)
 
     def render_sequence(self):
-        RenderDialog(fps=int(self.fps_input_field.text())).exec()
+        render_dialog_call = RenderDialog(fps=int(self.fps_input_field.text())).exec()
+        if render_dialog_call == QDialog.Accepted:
+            self.render_btn.setStyleSheet("color : green ;")
+            self.render_btn.setText("Rendered")
+            self.render_btn.setEnabled(False)
+            QTimer().singleShot(
+                2000, 
+                lambda: self._recover_btn(
+                    btn=self.render_btn,
+                    original_text="Render")
+                )
 
     def edit_expresion(self):
         expression_edit = ExpressionEditor().exec()
         if expression_edit == QDialog.Accepted:
+            self.command_func_combo.clear()
             self.command_func_combo.addItems(TCLEngine().get_procs())
 
     def run_expression(self):
@@ -302,6 +362,23 @@ class MainUserUi(QWidget):
                 frame=frame
             )
             time_map.time_map[frame] = int(tcl_rtn)
+        self.exec_btn.setStyleSheet("color : green ;")
+        self.exec_btn.setText("Executed")
+        self.exec_btn.setEnabled(False)
+        QTimer().singleShot(
+            2000, 
+            lambda: self._recover_btn(
+                btn=self.exec_btn,
+                original_text="Run Expression")
+            )
+
+    def _recover_btn(self, 
+                     btn: QPushButton,
+                     original_text: str
+                     ):
+        btn.setStyleSheet("color : black ;")
+        btn.setText(original_text)
+        btn.setEnabled(True)
 
 
     def keyPressEvent(self, event):

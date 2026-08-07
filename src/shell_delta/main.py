@@ -15,7 +15,7 @@ if __name__ == "__main__":
 
     window = QMainWindow()
     window.setWindowTitle("Shell DELTA")
-    window.resize(800, 600)
+    window.resize(860, 600)
 
     main_ui = MainUserUi()
     window.setCentralWidget(main_ui)
