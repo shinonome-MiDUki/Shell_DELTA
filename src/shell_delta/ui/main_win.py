@@ -1,4 +1,5 @@
 import re
+import time
 from pathlib import Path
 
 from PySide6.QtCore import (
@@ -9,7 +10,7 @@ from PySide6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, 
     QHBoxLayout, QPushButton, QLabel, 
     QFileDialog, QLineEdit, QComboBox, 
-    QDialog, QStackedWidget
+    QDialog, QStackedWidget, QMenu
 )
 from PySide6.QtMultimedia import (
     QAudioOutput, QMediaPlayer, QVideoFrame
@@ -40,6 +41,7 @@ class MainUserUi(QWidget):
         self.inputting = False
         self.seq_idx = 0
         self.ref_seq_idx = 0
+        self.ref_frame_offset = 0
 
         main_lo = QVBoxLayout()
         main_lo.setSpacing(10)
@@ -86,6 +88,9 @@ class MainUserUi(QWidget):
         self.ref_audio_widget = QAudioOutput()
         self.ref_player.setAudioOutput(self.ref_audio_widget)
         self.ref_player.videoSink().videoFrameChanged.connect(self.ref_video_proceed)
+
+        self.ref_video_widget.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.ref_video_widget.customContextMenuRequested.connect(self.ref_ctx_menu)
 
         self.ref_gl_widget = OpenGLImageWidget("")
         self.ref_gl_widget.setObjectName("RefOpenGLWidget")
@@ -220,6 +225,7 @@ class MainUserUi(QWidget):
             "mata_filename" : gb_var.mata_filename,
             "first_sequence_idx" : gb_var.first_sequence_idx,
             "frame_notation_len" : gb_var.frame_notation_len,
+            "ref_video_start": gb_var.ref_video_start,
             "ref_path" : str(gb_var.ref_path)
         }
         IO_SADPJ.write_sadpj(
@@ -315,6 +321,10 @@ class MainUserUi(QWidget):
         self.release_buff_btn.setText(f"Release Buff. ({mem}%)")
         self.play_btn.setEnabled(False)
         self.pause_btn.setEnabled(True)
+        if self.ref_player.position() == 0:
+            self.ref_player.setPosition(gb_var.ref_video_start)
+            print(gb_var.ref_video_start)
+            self.ref_frame_offset = int((gb_var.ref_video_start / 1000.0) * self.ref_fps)
         self.ref_player.play()
 
     def pause_sequence(self, arrived_idx):
@@ -336,6 +346,7 @@ class MainUserUi(QWidget):
         if not frame.isValid() or gb_var.mata_filename is None:
             return
         current_frame = int(round((frame.startTime() / 1000000.0) * self.ref_fps))
+        current_frame -= self.ref_frame_offset
         self.seq_idx = current_frame
         self.current_frame_label.setText(str(self.seq_idx))
         actual_img_idx = EditingUtils.get_actual_img_idx(seq_idx=self.seq_idx)
@@ -380,6 +391,19 @@ class MainUserUi(QWidget):
         btn.setText(original_text)
         btn.setEnabled(True)
 
+
+    def ref_ctx_menu(self, pos):
+        menu = QMenu(self.ref_video_widget)
+        action_01 = menu.addAction('Mark as Start')
+        current_pos = self.ref_player.position()
+        action_01.triggered.connect(
+            lambda: self.action(ref_video_start=current_pos)
+            )
+
+        menu.exec_(self.ref_video_widget.mapToGlobal(pos))
+
+    def action(self, ref_video_start: int):
+        gb_var.ref_video_start = ref_video_start
 
     def keyPressEvent(self, event):
         _move_seq_keys = [

@@ -40,5 +40,8 @@ classifiers = [
   "Programming Language :: Python"
 ]
 
+[project.scripts]
+delta = "shell_delta.__main__:main"
+
 [project.urls]
 Repository = "https://github.com/shinonome-MiDUki/Shell_DELTA"

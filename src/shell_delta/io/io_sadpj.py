@@ -45,6 +45,7 @@ class IO_SADPJ:
         gb_var.mata_filename = current_sadpj.get("mata_filename", None)
         gb_var.first_sequence_idx = current_sadpj.get("first_sequence_idx", 0)
         gb_var.frame_notation_len = current_sadpj.get("frame_notation_len", 0)
+        gb_var.ref_video_start = current_sadpj.get("ref_video_start", 0)
         ref_path = current_sadpj.get("ref_path", None)
         gb_var.ref_path = Path(ref_path) if ref_path is not None else None
         gb_var.saving_path = Path(reading_path)

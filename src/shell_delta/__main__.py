@@ -9,7 +9,7 @@ from shell_delta import gb_var
 import shell_delta.style as style
 
 
-if __name__ == "__main__":
+def main():
     app = QApplication(sys.argv)
     app.setApplicationDisplayName("Shell DELTA")
     app.setApplicationName("Shell_DELTA")
@@ -27,3 +27,6 @@ if __name__ == "__main__":
 
     window.show()
     sys.exit(app.exec())
+
+if __name__ == "__main__":
+    main()

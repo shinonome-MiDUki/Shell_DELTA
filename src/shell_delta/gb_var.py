@@ -17,4 +17,5 @@ first_sequence_idx : int = 0
 frame_notation_len : int = 0
 saving_path : Path | None = None
 ref_path: Path | None = None
+ref_video_start: int = 0
 style_script = dark_default
