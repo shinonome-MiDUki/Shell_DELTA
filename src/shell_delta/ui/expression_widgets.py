@@ -1,14 +1,15 @@
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QTimer, QStringListModel
 from PySide6.QtGui import QIntValidator
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QPushButton, 
     QComboBox, QDialog, QLineEdit,
-    QLabel
+    QLabel, QCompleter
 )
 from shell_delta.ui.expression_editor import ExpressionEditor
 from shell_delta.render import time_map
 from shell_delta.expression.tcl_engine import TCLEngine
 from shell_delta.expression.cel_engine import CELEngine
+from shell_delta.io.io_sadpj import IO_SADPJ
 from shell_delta import gb_var
 
 class TCLExpressionWidget(QWidget):
@@ -48,15 +49,27 @@ class TCLExpressionWidget(QWidget):
         func_name = self.command_func_combo.currentText()
         from_frame = int(self.run_from_input.text())
         to_frame = int(self.run_to_input.text())
+        arguements = {
+            "frame" : frame,
+            "seq_count" : len(gb_var.base_frame_list),
+            "loop_count" : to_frame - from_frame + 1
+        }
         for frame in range(from_frame, to_frame+1):
             tcl_rtn = TCLEngine().run_tcl(
                 func_name=func_name,
-                frame=frame
+                **arguements
             )
-            time_map.time_map[frame] = int(tcl_rtn)
+            if int(tcl_rtn) in gb_var.base_frame_list:
+                time_map.time_map[frame] = int(tcl_rtn)
+            else:
+                continue
         self.exec_btn.setStyleSheet(f"color : {gb_var.style_script.MAIN_WIN_SUCCESS} ;")
         self.exec_btn.setText("Executed")
         self.exec_btn.setEnabled(False)
+        IO_SADPJ.write_sadpj(
+            saving_path=gb_var.saving_path,
+            writing_info={"time_map" : time_map.time_map}
+        )
         QTimer().singleShot(
             2000, 
             lambda: self._recover_btn(
@@ -81,6 +94,18 @@ class CELExpressionWidget(QWidget):
         self.cel_input.setPlaceholderText("CEL expression ...")
         self.cel_input.setFixedWidth(220)
         lo.addWidget(self.cel_input)
+        self.presets = {
+            "$loop" : "(frame - 1) % seq_count + 1",
+            "$reverse" : "seq_count - ((frame - 1) % seq_count)",
+            "$hold_3frames" : "((frame - 1) / 2) % seq_count + 1",
+            "$ping_pong" : "(frame - 1) % (seq_count * 2 - 2) < seq_count? (frame - 1) % (seq_count * 2 - 2) + 1: seq_count * 2 - 1 - ((frame - 1) % (seq_count * 2 - 2))"
+        }
+        preset_completer = QCompleter()
+        preset_completer.setModel(QStringListModel(self.presets))
+        preset_completer.setCompletionMode(QCompleter.PopupCompletion)
+        self.cel_input.setCompleter(preset_completer)
+        self.cel_input.editingFinished.connect(self.complete_presets)
+
         self.exec_btn = QPushButton("Run Expression")
         self.exec_btn.clicked.connect(self.run_expression)
         lo.addWidget(self.exec_btn)
@@ -106,18 +131,35 @@ class CELExpressionWidget(QWidget):
         )
         for frame in range(from_frame, to_frame+1):
             cel_rtn = cel_engine.run_cel(
-                data={"frame" : frame}
+                data={
+                    "frame" : frame,
+                    "seq_count" : len(gb_var.base_frame_list),
+                    "loop_count" : to_frame - from_frame + 1
+                }
             )
-            time_map.time_map[frame] = int(cel_rtn)
+            if int(cel_rtn) in gb_var.base_frame_list:
+                time_map.time_map[frame] = int(cel_rtn)
+            else:
+                continue
         self.exec_btn.setStyleSheet(f"color : {gb_var.style_script.MAIN_WIN_SUCCESS} ;")
         self.exec_btn.setText("Executed")
         self.exec_btn.setEnabled(False)
+        IO_SADPJ.write_sadpj(
+            saving_path=gb_var.saving_path,
+            writing_info={"time_map" : time_map.time_map}
+        )
         QTimer().singleShot(
             2000, 
             lambda: self._recover_btn(
                 btn=self.exec_btn,
                 original_text="Run Expression")
             )
+
+    def complete_presets(self):
+        if not self.cel_input.text().startswith("$"):
+            return
+        preset_used = self.cel_input.text()
+        self.cel_input.setText(self.presets.get(preset_used, ""))
 
     def _recover_btn(self, 
                         btn: QPushButton,

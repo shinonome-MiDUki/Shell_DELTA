@@ -10,7 +10,7 @@ styles = {
     "kawaii_pink" : kawaii_pink, 
     "elegant_light" : elegant_light,
 }
-
+base_frame_list : list[int] = []
 sequence_root_dir : Path | None = None
 mata_filename : str | None = None
 first_sequence_idx : int = 0

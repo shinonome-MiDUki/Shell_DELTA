@@ -29,12 +29,9 @@ class TCLEngine:
 
     def run_tcl(self,
                 func_name: str,
-                frame: int
+                **arguments
                 ) -> str:
         self.tcl_intepreter.eval(self.expression)
-        arguments = {
-            "frame" : frame
-        }
         tcl_rtn = self.tcl_intepreter.call(
             func_name,
             [item for pair in arguments.items() for item in pair]
