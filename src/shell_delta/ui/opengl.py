@@ -1,5 +1,4 @@
 import gc
-import ctypes
 from pathlib import Path
 
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
@@ -54,6 +53,9 @@ class OpenGLImageWidget(QOpenGLWidget):
     def change_image(self, 
                      new_image_path: str | Path
                      ) -> None:
+        if self.ram_img_buffer:
+            self.change_image_onram(next_image_path=new_image_path)
+            return
         new_image_path = str(new_image_path)
         self.makeCurrent()
         self._load_texture(new_image_path)
@@ -103,10 +105,12 @@ class OpenGLImageWidget(QOpenGLWidget):
         self.ram_img_buffer = {}
         gc.collect()
         try:
-            ctypes.CDLL("libc.so.6").malloc_trim(0)
+            import platform
+            import ctypes
+            if platform.system() == "Linux":
+                ctypes.CDLL("libc.so.6").malloc_trim(0)
         except Exception:
             pass
-
 
 
     def resizeGL(self, w, h):
@@ -137,6 +141,10 @@ class OpenGLImageWidget(QOpenGLWidget):
         if not self.texture:
             return
 
+        if not self.texture.isCreated() or self.texture.textureId() == 0:
+            self.release_buffer()
+            self.send_img_to_buffer()
+            return
         self.texture.bind()
 
         # -1.0 〜 1.0 の正方形の矩形を描画（resizeGL の glOrtho 側で比率を吸収）

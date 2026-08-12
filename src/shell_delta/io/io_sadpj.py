@@ -20,7 +20,7 @@ class IO_SADPJ:
                 saving_path_split.pop(-1)
                 saving_path = "".join(saving_path_split)
             saving_path += ".sadpj"
-        if Path(saving_path).exists():
+        if saving_path is not None and Path(saving_path).exists():
             with open(saving_path, "r", encoding="utf-8") as f:
                 current_sadpj = json.load(f)
             for writing_attr in writing_info:
@@ -35,12 +35,13 @@ class IO_SADPJ:
     def load_sadpj(cls,
                    reading_path: str
                    ) -> None:
-        if not Path(reading_path).exists():
+        if reading_path is None or not Path(reading_path).exists():
             return
         with open(reading_path, "r", encoding="utf-8") as f:
             current_sadpj = json.load(f)
         current_time_map = current_sadpj.get("time_map", {})
         time_map.time_map = {int(k) : int(v) for k, v in current_time_map.items()}
+        gb_var.base_frame_list = [int(i) for i in current_sadpj.get("base_frame_list", [])]
         gb_var.sequence_root_dir = Path(current_sadpj["sequence_root_dir"]) if "sequence_root_dir" in current_sadpj else None
         gb_var.mata_filename = current_sadpj.get("mata_filename", None)
         gb_var.first_sequence_idx = current_sadpj.get("first_sequence_idx", 0)
@@ -55,7 +56,7 @@ class IO_SADPJ:
                    reading_path: str,
                    reading_attr: str
                    ) -> Any:
-        if not Path(reading_path).exists():
+        if reading_path is None or not Path(reading_path).exists():
             return
         with open(reading_path, "r", encoding="utf-8") as f:
             current_sadpj = json.load(f)

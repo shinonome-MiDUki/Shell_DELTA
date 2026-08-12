@@ -1,3 +1,6 @@
+import re
+from pathlib import Path
+
 from shell_delta.render import time_map
 from shell_delta import gb_var
 
@@ -23,3 +26,19 @@ class EditingUtils:
             f"{img_idx:0{gb_var.frame_notation_len}d}"
             )
         return actual_filename
+
+    @classmethod
+    def get_base_frames(cls) -> list[int]:
+        root_dir = Path(gb_var.sequence_root_dir)
+        if root_dir is None or not root_dir.exists():
+            return
+        escaped_template = re.escape(gb_var.mata_filename)
+        regex_pattern = re.sub(r"#+", r"(\\d+)", escaped_template)
+        compiled_regex = re.compile(f"^{regex_pattern}$")
+        glob_pattern = re.sub(r"#+", "*", gb_var.mata_filename)
+        base_frames = []
+        for file_path in root_dir.glob(glob_pattern):
+            match = compiled_regex.match(file_path.name)
+            if match:
+                base_frames.append(int(match.group(1)))
+        return base_frames

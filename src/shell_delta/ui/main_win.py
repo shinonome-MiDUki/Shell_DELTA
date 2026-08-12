@@ -128,6 +128,9 @@ class MainUserUi(QWidget):
         self.pause_btn.clicked.connect(self.pause_sequence)
         self.pause_btn.setEnabled(False)
         video_lo.addWidget(self.pause_btn)
+        self.back_to_start_btn = QPushButton("Back")
+        self.back_to_start_btn.clicked.connect(self.back_to_start)
+        video_lo.addWidget(self.back_to_start_btn)
         mem = round(psutil.virtual_memory().percent)
         self.release_buff_btn = QPushButton(f"Release Buff. ({mem}%)")
         self.release_buff_btn.clicked.connect(self.release_buffer)
@@ -220,6 +223,7 @@ class MainUserUi(QWidget):
         else:
             filename = str(gb_var.saving_path)
         writing_info = {
+            "base_frame_list" : EditingUtils.get_base_frames(),
             "time_map" : time_map.time_map,
             "sequence_root_dir" : str(gb_var.sequence_root_dir),
             "mata_filename" : gb_var.mata_filename,
@@ -228,6 +232,7 @@ class MainUserUi(QWidget):
             "ref_video_start": gb_var.ref_video_start,
             "ref_path" : str(gb_var.ref_path)
         }
+        print(writing_info)
         IO_SADPJ.write_sadpj(
             saving_path=filename,
             writing_info=writing_info
@@ -302,6 +307,7 @@ class MainUserUi(QWidget):
         for num in numbers:
             num = int(num)
             time_map.time_map[num] = num
+        gb_var.base_frame_list = EditingUtils.get_base_frames()
 
     def open_reference(self):
         filename, _ = QFileDialog.getOpenFileName(self, "Open Sequence", "", "Video (*.mp4)")
@@ -326,11 +332,16 @@ class MainUserUi(QWidget):
             print(gb_var.ref_video_start)
             self.ref_frame_offset = int((gb_var.ref_video_start / 1000.0) * self.ref_fps)
         self.ref_player.play()
+        self.back_to_start_btn.setEnabled(False)
 
     def pause_sequence(self, arrived_idx):
         self.ref_player.pause()
         self.play_btn.setEnabled(True)
         self.pause_btn.setEnabled(False)
+        self.back_to_start_btn.setEnabled(True)
+
+    def back_to_start(self):
+        self.ref_player.setPosition(0)
 
     def release_buffer(self):
         if self.gl_widget.ram_img_buffer:
@@ -394,16 +405,18 @@ class MainUserUi(QWidget):
 
     def ref_ctx_menu(self, pos):
         menu = QMenu(self.ref_video_widget)
-        action_01 = menu.addAction('Mark as Start')
-        current_pos = self.ref_player.position()
+        action_01 = menu.addAction("Mark as Start")
         action_01.triggered.connect(
-            lambda: self.action(ref_video_start=current_pos)
-            )
+            lambda: setattr(gb_var, 'ref_video_start', int(self.ref_player.position()))
+        )
+        action_02 = menu.addAction("Reset Starting Point")
+        action_02.triggered.connect(
+            lambda: setattr(gb_var, 'ref_video_start', 0)
+        )
+        
 
         menu.exec_(self.ref_video_widget.mapToGlobal(pos))
 
-    def action(self, ref_video_start: int):
-        gb_var.ref_video_start = ref_video_start
 
     def keyPressEvent(self, event):
         _move_seq_keys = [
