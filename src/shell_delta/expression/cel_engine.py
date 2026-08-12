@@ -9,6 +9,7 @@ class CELEngine:
                 "frame": cel.Type.INT,
                 "seq_count": cel.Type.INT,
                 "loop_count": cel.Type.INT,
+                "cframe": cel.Type.INT
                 }
             )
         self.expr = cel_env.compile(cel_expression)
