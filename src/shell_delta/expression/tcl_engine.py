@@ -1,6 +1,6 @@
 import tkinter
 
-from shell_delta.io.io_sadpj import IO_SADPJ
+from shell_delta.io.io_sdproj import IO_sdproj
 from shell_delta import gb_var
 
 class TCLEngine:
@@ -10,7 +10,7 @@ class TCLEngine:
         if reading_path is None:
             print("TCL Engine used when reading_path is None")
             return
-        self.expression = IO_SADPJ.read_sadpj(
+        self.expression = IO_sdproj.read_sdproj(
             reading_path=str(reading_path),
             reading_attr="expression"
         )

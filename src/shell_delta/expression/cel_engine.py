@@ -6,7 +6,9 @@ class CELEngine:
                  ):
         cel_env = cel.NewEnv(
             variables={
-                "frame": cel.Type.INT
+                "frame": cel.Type.INT,
+                "seq_count": cel.Type.INT,
+                "loop_count": cel.Type.INT,
                 }
             )
         self.expr = cel_env.compile(cel_expression)

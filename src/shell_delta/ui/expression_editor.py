@@ -4,7 +4,7 @@ from PySide6.QtWidgets import (
 )
 
 from shell_delta import gb_var
-from shell_delta.io.io_sadpj import IO_SADPJ
+from shell_delta.io.io_sdproj import IO_sdproj
 
 class ExpressionEditor(QDialog):
     def __init__(self):
@@ -46,7 +46,7 @@ class ExpressionEditor(QDialog):
         if saving_path is None:
             self.reject()
             return
-        IO_SADPJ.write_sadpj(
+        IO_sdproj.write_sdproj(
             saving_path=str(saving_path),
             writing_info={"expression" : self.scripting_area.toPlainText()}
         )
@@ -57,7 +57,7 @@ class ExpressionEditor(QDialog):
         if saving_path is None:
             self.reject()
             return
-        current_expression = IO_SADPJ.read_sadpj(
+        current_expression = IO_sdproj.read_sdproj(
             reading_path=str(saving_path),
             reading_attr="expression"
         )

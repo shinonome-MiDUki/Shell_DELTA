@@ -24,7 +24,7 @@ from shell_delta.ui.opengl import OpenGLImageWidget
 from shell_delta.ui.render_dialog import RenderDialog
 from shell_delta.ui.expression_widgets import TCLExpressionWidget, CELExpressionWidget
 from shell_delta.render import time_map
-from shell_delta.io.io_sadpj import IO_SADPJ
+from shell_delta.io.io_sdproj import IO_sdproj
 from shell_delta.expression.tcl_engine import TCLEngine
 from shell_delta.utils.editing_utils import EditingUtils
 from shell_delta import gb_var
@@ -184,10 +184,10 @@ class MainUserUi(QWidget):
         self.tcl_widget.command_func_combo.addItems(TCLEngine().get_procs())
 
     def read_proj(self):
-        filename, _ = QFileDialog.getOpenFileName(self, "Open Sequence", "", "Shell Delta proj. (*.sadpj)")
+        filename, _ = QFileDialog.getOpenFileName(self, "Open Sequence", "", "Shell Delta proj. (*.sdproj)")
         if not filename:
             return
-        IO_SADPJ.load_sadpj(reading_path=filename)
+        IO_sdproj.load_sdproj(reading_path=filename)
         self.seq_idx = 1
         if gb_var.mata_filename is None:
             return
@@ -217,7 +217,7 @@ class MainUserUi(QWidget):
 
     def save_proj(self):
         if gb_var.saving_path is None:
-            filename, _ = QFileDialog.getOpenFileName(self, "Open Sequence", "", "Shell Delta proj. (*.sadpj)")
+            filename, _ = QFileDialog.getOpenFileName(self, "Open Sequence", "", "Shell Delta proj. (*.sdproj)")
             if not filename:
                 return
         else:
@@ -233,7 +233,7 @@ class MainUserUi(QWidget):
             "ref_path" : str(gb_var.ref_path)
         }
         print(writing_info)
-        IO_SADPJ.write_sadpj(
+        IO_sdproj.write_sdproj(
             saving_path=filename,
             writing_info=writing_info
             )

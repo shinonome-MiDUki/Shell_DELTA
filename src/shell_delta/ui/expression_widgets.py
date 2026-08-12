@@ -9,7 +9,7 @@ from shell_delta.ui.expression_editor import ExpressionEditor
 from shell_delta.render import time_map
 from shell_delta.expression.tcl_engine import TCLEngine
 from shell_delta.expression.cel_engine import CELEngine
-from shell_delta.io.io_sadpj import IO_SADPJ
+from shell_delta.io.io_sdproj import IO_sdproj
 from shell_delta import gb_var
 
 class TCLExpressionWidget(QWidget):
@@ -66,7 +66,7 @@ class TCLExpressionWidget(QWidget):
         self.exec_btn.setStyleSheet(f"color : {gb_var.style_script.MAIN_WIN_SUCCESS} ;")
         self.exec_btn.setText("Executed")
         self.exec_btn.setEnabled(False)
-        IO_SADPJ.write_sadpj(
+        IO_sdproj.write_sdproj(
             saving_path=gb_var.saving_path,
             writing_info={"time_map" : time_map.time_map}
         )
@@ -144,7 +144,7 @@ class CELExpressionWidget(QWidget):
         self.exec_btn.setStyleSheet(f"color : {gb_var.style_script.MAIN_WIN_SUCCESS} ;")
         self.exec_btn.setText("Executed")
         self.exec_btn.setEnabled(False)
-        IO_SADPJ.write_sadpj(
+        IO_sdproj.write_sdproj(
             saving_path=gb_var.saving_path,
             writing_info={"time_map" : time_map.time_map}
         )
