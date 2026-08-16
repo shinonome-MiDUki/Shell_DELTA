@@ -146,7 +146,7 @@ class MainUserUi(QWidget):
         fps_label.setFixedWidth(60)
         fps_label.setAlignment(Qt.AlignRight)
         fps_input_lo.addWidget(fps_label)
-        self.fps_input_field = QLineEdit("24")
+        self.fps_input_field = QLineEdit("30.0")
         self.fps_input_field.setValidator(QDoubleValidator())
         self.fps_input_field.setFixedWidth(60)
         fps_input_lo.addWidget(self.fps_input_field)
@@ -212,6 +212,7 @@ class MainUserUi(QWidget):
         cv2_videocap = cv2.VideoCapture(str(gb_var.ref_path))
         self.ref_fps = cv2_videocap.get(cv2.CAP_PROP_FPS) if cv2_videocap.isOpened() else 0.0
         cv2_videocap.release()
+        self.fps_input_field.setText(str(self.ref_fps))
         self._show_expression_panel()
 
 
@@ -318,6 +319,7 @@ class MainUserUi(QWidget):
         cv2_videocap = cv2.VideoCapture(filename)
         self.ref_fps = cv2_videocap.get(cv2.CAP_PROP_FPS) if cv2_videocap.isOpened() else 0.0
         cv2_videocap.release()
+        self.fps_input_field.setText(str(self.ref_fps))
 
     def play_sequence(self):
         if not self.gl_widget.ram_img_buffer:
