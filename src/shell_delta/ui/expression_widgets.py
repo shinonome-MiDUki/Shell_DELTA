@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 from PySide6.QtCore import QTimer, QStringListModel
 from PySide6.QtGui import QIntValidator
 from PySide6.QtWidgets import (
@@ -95,12 +98,11 @@ class CELExpressionWidget(QWidget):
         self.cel_input.setPlaceholderText("CEL expression ...")
         self.cel_input.setFixedWidth(220)
         lo.addWidget(self.cel_input)
-        self.presets = {
-            "$loop" : "(frame - 1) % seq_count + 1",
-            "$reverse" : "seq_count - ((frame - 1) % seq_count)",
-            "$hold_3frames" : "((frame - 1) / 2) % seq_count + 1",
-            "$ping_pong" : "(frame - 1) % (seq_count * 2 - 2) < seq_count? (frame - 1) % (seq_count * 2 - 2) + 1: seq_count * 2 - 1 - ((frame - 1) % (seq_count * 2 - 2))"
-        }
+        if not (Path(__file__).resolve().parents[1] / "_resources/expression_presets.json").exists():
+            raise Exception
+        with open (Path(__file__).resolve().parents[1] / "_resources/expression_presets.json", 
+                   "r", encoding="utf-8") as f:
+            self.presets = json.load(f)
         preset_completer = QCompleter()
         preset_completer.setModel(QStringListModel(self.presets))
         preset_completer.setCompletionMode(QCompleter.PopupCompletion)

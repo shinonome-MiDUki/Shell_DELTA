@@ -1,0 +1,6 @@
+{
+    "$loop" : "(frame - 1) % seq_count + 1",
+    "$reverse" : "seq_count - ((frame - 1) % seq_count)",
+    "$hold_3frames" : "((frame - 1) / 2) % seq_count + 1",
+    "$ping_pong" : "(frame - 1) % (seq_count * 2 - 2) < seq_count? (frame - 1) % (seq_count * 2 - 2) + 1: seq_count * 2 - 1 - ((frame - 1) % (seq_count * 2 - 2))"
+}
